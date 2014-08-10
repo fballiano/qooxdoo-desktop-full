@@ -1,0 +1,35 @@
+{
+    "info": {
+        "name": "nqx",
+
+        "summary": "Qooxdoo for NodeJS",
+        "description": "Qooxdoo for NodeJS",
+
+        "homepage": "http://some.homepage.url/",
+
+        "license": "SomeLicense",
+        "authors": [
+            {
+                "name": "Roman Gratchev (gratromv)",
+                "email": "gratromv@gmail.com"
+            }
+        ],
+
+        "version": "trunk",
+        "qooxdoo-versions": ["3.0.1"]
+    },
+
+    "provides": {
+        "namespace": "nqx",
+        "encoding": "utf-8",
+        "class": "source/class",
+        "resource": "source/resource",
+        "translation": "source/translation",
+        "type": "library"
+    },
+
+    "qx.theme": {
+        "default": "qx.theme.Indigo"
+    }
+}
+

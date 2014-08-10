@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>PROVA</title>
+  <script type="text/javascript" src="build/qx/qx.js"></script>
+  <script type="text/javascript">
+
+qx.Class.define("p4a.Application",
+{
+  extend : qx.application.Standalone,
+  members :
+  {
+    main : function()
+    {
+      this.base(arguments);
+      if (qx.core.Environment.get("qx.debug")) {
+        qx.log.appender.Native;
+        qx.log.appender.Console;
+      }
+
+      /*
+      -------------------------------------------------------------------------
+        Below is your actual application code...
+      -------------------------------------------------------------------------
+      */
+
+/*
+      // Create a button
+      var button1 = new qx.ui.form.Button("First Button", "p4a/test.png");
+
+      // Document is the application root
+      var doc = this.getRoot();
+
+      // Add button to document at fixed coordinates
+      doc.add(button1, {left: 100, top: 50});
+
+      // Add an event listener
+      button1.addListener("execute", function(e) {
+        alert("Hello World!");
+      });
+*/
+
+	var form = new qx.ui.form.Form();
+	form.add(new qx.ui.form.TextField(), "Name");
+	form.add(new qx.ui.form.PasswordField(), "Password");
+	form.add(new qx.ui.form.TextField(), "Città");
+	form.add(new qx.ui.form.TextField(), "Casa");
+	form.add(new qx.ui.form.TextField(), "Prova");
+
+
+
+            var main_container = new qx.ui.container.Composite();
+            main_container.setLayout(new qx.ui.layout.VBox());
+            main_container.setWidth(qx.bom.Viewport.getWidth());
+            main_container.setHeight(qx.bom.Viewport.getHeight());
+
+			var hbox = new qx.ui.container.Composite();
+			hbox.setLayout(new qx.ui.layout.HBox());
+            hbox.add(new qx.ui.form.Button("Child Widget 1").set({
+				minWidth: 200,
+                width: 200,
+                allowGrowX: false,
+            }), {flex: 1});
+            hbox.add(new qx.ui.form.renderer.Double(form).set({
+                minWidth: 300,
+                maxWidth: 20000,
+				allowGrowX: true,
+            }), {flex: 1});
+            hbox.add(new qx.ui.form.Button("Child Widget 3").set({
+                minWidth: 200,
+				width: 200,
+                allowGrowX: false,
+            }), {flex: 1});
+			
+			main_container.add(new qx.ui.form.Button("Child Widget 1"), {flex: 0});
+			main_container.add(hbox, {flex:1});
+			main_container.add(new qx.ui.basic.Label().set({
+				value: "P4A 4.0 by <a href='#'>Fabrizio Balliano</a>",
+				rich: true,
+				textAlign: "center",
+				width: '600'
+			}), {flex: 0});
+
+			var application_root = this.getRoot();
+            application_root.add(main_container);
+            application_root.addListener("resize", function(e) {
+                main_container.set({
+                    "width": qx.bom.Viewport.getWidth(),
+                });
+            }, this);
+    }
+  }
+});
+
+
+nqx.Bootstrap.setApplication("p4a.Application");
+
+  </script>
+</head>
+<body></body>
+</html>

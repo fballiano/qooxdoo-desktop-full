@@ -1,0 +1,210 @@
+{
+    "name": "nqx",
+
+    "include": [
+        {
+            "path": "${QOOXDOO_PATH}/tool/data/config/application.json"
+        }
+    ],
+
+    /*
+     "export" :
+     [
+     "api",
+     "api-data",
+     "build",
+     "build-all",
+     "clean",
+     "distclean",
+     "fix",
+     "info",
+     "inspector",
+     "lint",
+     "migration",
+     "pretty",
+     "profiling",
+     "source",
+     "source-all",
+     "source-hybrid",
+     "simulation-build",
+     "simulation-run",
+     "test",
+     "test-source",
+     "translation"
+     ],*/
+    "export": [
+        "build-all",
+        //"distclean",
+        "clean-all"
+    ],
+
+    "default-job": "build-all",
+
+    "let": {
+        "APPLICATION": "nqx",
+        "QOOXDOO_PATH": "../qooxdoo-4.0.1-sdk",
+        "QXTHEME"      : "qx.theme.Indigo",
+        //"API_INCLUDE": ["q", "qxWeb", "qx.*", "nqx.*"],
+		"API_INCLUDE": ["q", "qx.*", "nqx.*"],
+        "API_EXCLUDE": ["qx.test.*"],
+        "TEST_INCLUDE": "qx.test.*",
+        //"API_EXCLUDE"  : ["qx.test.*", "${APPLICATION}.theme.*", "${APPLICATION}.test.*", "${APPLICATION}.simulation.*"],
+        //"LOCALES"      : [ "en", "ru" ],
+        "CACHE": "${TMPDIR}/qx${QOOXDOO_VERSION}/cache",
+        "CACHE_KEY"    :
+        {
+            "compile"      : "${CACHE}",
+            "downloads"    : "${CACHE}/downloads",
+            "invalidate-on-tool-change" : true
+        },
+        "ROOT": ".",
+        "BUILD_PATH": "build/qx",
+        "LOCALES": [
+            "cs",  // Czech
+            "de",
+            "en",
+            "es",
+            "fr",
+            "it",
+            "nl",
+            "nb",  // Norwegian
+            "pl",
+            "pt",  // Portuguese
+            "ro",
+            "sl",  // Slovene
+            "sv",   // Swedish
+            "ru"
+        ]
+    },
+
+    "jobs": {
+
+        "build-debug": {
+            "library": [
+                {
+                    "manifest": "${QOOXDOO_PATH}/framework/Manifest.json"
+                },
+                {
+                    "manifest": "Manifest.json"
+                }
+            ],
+
+            "extend": [ "cache" ],
+
+            "include": "${API_INCLUDE}",
+            "exclude": ["qx.test.*"],
+
+            "environment": {
+                "qx.debug": true,
+                "qx.aspects": false,
+                "qx.theme"       : "${QXTHEME}"
+            },
+
+            "compile-options": {
+                "paths": {
+                    "file": "${BUILD_PATH}/nqx.debug.js",
+                    "app-root": "${BUILD_PATH}"
+                },
+                "code": {
+                    "locales": "${LOCALES}",
+                    "format": "on",
+                    "except": [],
+                    "optimize": ["comments"]
+                },
+                "uris":{
+                    "script":"/nqx",
+                    "resource":"/nqx/resource",
+                    "add-nocache-param":false
+                }
+            },
+
+            "compile": {
+                "type": "build"
+            }
+        },
+
+        "build-runtime": {
+            "extend": ["build-debug"],
+
+            "environment": {
+                "qx.debug": false
+            },
+
+            "compile-options": {
+                "paths": {
+                    "file": "${BUILD_PATH}/qx.js"
+                },
+                "code": {
+                    "format": "off",
+                    "optimize": ["basecalls", "comments", "privates", "strings", "variables", "variants", "whitespace"]
+                }
+            },
+
+            "copy-resources": {
+                "target": "${BUILD_PATH}"
+            }
+        },
+
+        "build-all": {
+            "run": [
+                "build-debug",
+                "build-runtime",
+                "clean-debug-resources"
+            ]
+        },
+
+        "clean-debug-resources" :
+        {
+            "clean-files" :
+            {
+                "Deleting debug resource" :
+                    [
+                        "${BUILD_PATH}/resource/qx/test"
+                    ]
+            }
+        },
+
+        "clean-all" :
+        {
+            "desc"    : "remove the cache and all generated artefacts of this library (source, build, ...)",
+
+            "cache"   : "${CACHE_KEY}",
+
+            "clean-files" :
+            {
+                "Deleting build" :
+                    [
+                        "${BUILD_PATH}/qx.js",
+                        "${BUILD_PATH}/qx.debug.js",
+                        "${BUILD_PATH}/resource/qx"
+                    ],
+                "Cleaning up source" :
+                    [
+                        "${ROOT}/source/script"
+                    ],
+                "Deleting api folder" :
+                    [
+                        "${ROOT}/api"
+                    ],
+                "Deleting test folder" :
+                    [
+                        "${ROOT}/test"
+                    ],
+                "Deleting inspector folder" :
+                    [
+                        "${ROOT}/inspector"
+                    ],
+                "Deleting simulator folder" :
+                    [
+                        "${ROOT}/simulator"
+                    ]
+                /*
+                 ,"Deleting cache" :
+                 [
+                 "${CACHE}"
+                 ]
+                 */
+            }
+        }
+    }
+}

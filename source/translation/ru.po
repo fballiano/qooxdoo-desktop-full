@@ -1,0 +1,406 @@
+# (Default)
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: qooxdoo framework\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2008-05-19 10:11+0200\n"
+"PO-Revision-Date: 2012-05-29 12:20+0300\n"
+"Last-Translator: \n"
+"Language-Team: none\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: qx/locale/Key.js:80
+msgid "key_short_Backspace"
+msgstr "Backspace"
+
+#: qx/locale/Key.js:81
+msgid "key_short_Tab"
+msgstr "Табуляция"
+
+#: qx/locale/Key.js:82
+msgid "key_short_Space"
+msgstr "Пробел"
+
+#: qx/locale/Key.js:83
+msgid "key_short_Enter"
+msgstr "Ввод"
+
+#: qx/locale/Key.js:84
+msgid "key_short_Shift"
+msgstr "Shift"
+
+#: qx/locale/Key.js:85
+msgid "key_short_Control"
+msgstr "Ctrl"
+
+#: qx/locale/Key.js:86
+msgid "key_short_Control_Mac"
+msgstr "Mac fn"
+
+#: qx/locale/Key.js:87
+msgid "key_short_Alt"
+msgstr "Alt"
+
+#: qx/locale/Key.js:88
+msgid "key_short_CapsLock"
+msgstr "CapsLock"
+
+#: qx/locale/Key.js:89
+msgid "key_short_Meta"
+msgstr "Meta"
+
+#: qx/locale/Key.js:90
+msgid "key_short_Escape"
+msgstr "Esc"
+
+#: qx/locale/Key.js:91
+msgid "key_short_Left"
+msgstr "Влево"
+
+#: qx/locale/Key.js:92
+msgid "key_short_Up"
+msgstr "Вверх"
+
+#: qx/locale/Key.js:93
+msgid "key_short_Right"
+msgstr "Вправо"
+
+#: qx/locale/Key.js:94
+msgid "key_short_Down"
+msgstr "Вниз"
+
+#: qx/locale/Key.js:95
+msgid "key_short_PageUp"
+msgstr "PageUp"
+
+#: qx/locale/Key.js:96
+msgid "key_short_PageDown"
+msgstr "PageDown"
+
+#: qx/locale/Key.js:97
+msgid "key_short_End"
+msgstr "End"
+
+#: qx/locale/Key.js:98
+msgid "key_short_Home"
+msgstr "Home"
+
+#: qx/locale/Key.js:99
+msgid "key_short_Insert"
+msgstr "Insert"
+
+#: qx/locale/Key.js:100
+msgid "key_short_Delete"
+msgstr "Delete"
+
+#: qx/locale/Key.js:101
+msgid "key_short_NumLock"
+msgstr "NumLock"
+
+#: qx/locale/Key.js:102
+msgid "key_short_PrintScreen"
+msgstr "PrtScr"
+
+#: qx/locale/Key.js:103
+msgid "key_short_Scroll"
+msgstr "ScrLck"
+
+#: qx/locale/Key.js:104
+msgid "key_short_Pause"
+msgstr "Pause"
+
+#: qx/locale/Key.js:105
+msgid "key_short_Win"
+msgstr "Win"
+
+#: qx/locale/Key.js:106
+msgid "key_short_Apps"
+msgstr "Конт"
+
+#: qx/locale/Key.js:109
+msgid "key_full_Backspace"
+msgstr "Backspace"
+
+#: qx/locale/Key.js:110
+msgid "key_full_Tab"
+msgstr "Табуляция"
+
+#: qx/locale/Key.js:111
+msgid "key_full_Space"
+msgstr "Пробел"
+
+#: qx/locale/Key.js:112
+msgid "key_full_Enter"
+msgstr "Ввод"
+
+#: qx/locale/Key.js:113
+msgid "key_full_Shift"
+msgstr "Shift"
+
+#: qx/locale/Key.js:114
+msgid "key_full_Control"
+msgstr "Control"
+
+#: qx/locale/Key.js:115
+msgid "key_full_Control_Mac"
+msgstr "Mac cmd"
+
+#: qx/locale/Key.js:116
+msgid "key_full_Alt"
+msgstr "Alt"
+
+#: qx/locale/Key.js:117
+msgid "key_full_CapsLock"
+msgstr "Caps Lock"
+
+#: qx/locale/Key.js:118
+msgid "key_full_Meta"
+msgstr "Meta"
+
+#: qx/locale/Key.js:119
+msgid "key_full_Escape"
+msgstr "Escape"
+
+#: qx/locale/Key.js:120
+msgid "key_full_Left"
+msgstr "Клавиша Влево"
+
+#: qx/locale/Key.js:121
+msgid "key_full_Up"
+msgstr "Клавиша Вверх"
+
+#: qx/locale/Key.js:122
+msgid "key_full_Right"
+msgstr "Клавиша Вправо"
+
+#: qx/locale/Key.js:123
+msgid "key_full_Down"
+msgstr "Клавиша Вниз"
+
+#: qx/locale/Key.js:124
+msgid "key_full_PageUp"
+msgstr "Page Up"
+
+#: qx/locale/Key.js:125
+msgid "key_full_PageDown"
+msgstr "Page Down"
+
+#: qx/locale/Key.js:126
+msgid "key_full_End"
+msgstr "End"
+
+#: qx/locale/Key.js:127
+msgid "key_full_Home"
+msgstr "Home"
+
+#: qx/locale/Key.js:128
+msgid "key_full_Insert"
+msgstr "Insert"
+
+#: qx/locale/Key.js:129
+msgid "key_full_Delete"
+msgstr "Delete"
+
+#: qx/locale/Key.js:130
+msgid "key_full_NumLock"
+msgstr "NumLock"
+
+#: qx/locale/Key.js:131
+msgid "key_full_PrintScreen"
+msgstr "Print Screen"
+
+#: qx/locale/Key.js:132
+msgid "key_full_Scroll"
+msgstr "Scroll Lock"
+
+#: qx/locale/Key.js:133
+msgid "key_full_Pause"
+msgstr "Pause"
+
+#: qx/locale/Key.js:134
+msgid "key_full_Win"
+msgstr "Win"
+
+#: qx/locale/Key.js:135
+msgid "key_full_Apps"
+msgstr "Контекстное меню"
+
+#: qx/test/locale/Locale.js:90
+#: qx/test/locale/Locale.js:93
+#: qx/test/locale/Locale.js:96
+msgid "test One car"
+msgid_plural "test %1 cars"
+msgstr[0] "тест Одна машина"
+msgstr[1] "тест %1 машин(ы)"
+
+#: qx/test/ui/LocaleSwitch.js:85
+#: qx/test/ui/LocaleSwitch.js:115
+#: qx/test/data/marshal/Json.js:81
+#: qx/test/locale/Locale.js:78
+#: qx/test/locale/Locale.js:153
+msgid "test one"
+msgstr "тест один"
+
+#: qx/test/ui/LocaleSwitch.js:93
+#: qx/test/locale/Locale.js:82
+#: qx/test/locale/Locale.js:86
+msgid "test Hello %1!"
+msgstr "тест Привет %1!"
+
+#: qx/test/ui/LocaleSwitch.js:93
+#: qx/test/locale/Locale.js:86
+msgid "test Jonny"
+msgstr "тест Джонни"
+
+#: qx/test/ui/LocaleSwitch.js:99
+#: qx/test/locale/Locale.js:154
+msgid "test two"
+msgstr "тест два"
+
+#: qx/test/util/Serializer.js:490
+#: qx/test/util/Serializer.js:495
+#: qx/test/util/Serializer.js:502
+msgid "test affe"
+msgstr "test affe"
+
+#: qx/ui/control/ColorPopup.js:147
+msgid "Automatic"
+msgstr "Автоматический"
+
+#: qx/ui/control/ColorPopup.js:155
+msgid "Open ColorSelector"
+msgstr "Открыть выбор цвета"
+
+#: qx/ui/control/ColorPopup.js:180
+msgid "OK"
+msgstr "ОК"
+
+#: qx/ui/control/ColorPopup.js:185
+msgid "Cancel"
+msgstr "Отмена"
+
+#: qx/ui/control/ColorPopup.js:242
+msgid "Color Selector"
+msgstr "Выбор цвета"
+
+#: qx/ui/control/ColorSelector.js:256
+msgid "Visual"
+msgstr "Визуальный"
+
+#: qx/ui/control/ColorSelector.js:316
+msgid "Presets"
+msgstr "Предустановки"
+
+#: qx/ui/control/ColorSelector.js:347
+msgid "Details"
+msgstr "Детали"
+
+#: qx/ui/control/ColorSelector.js:358
+#: qx/ui/control/ColorPopup.js:162
+msgid "Preview (Old/New)"
+msgstr "Просмотр (Старый/Новый)"
+
+#: qx/ui/control/ColorSelector.js:376
+msgid "Hex"
+msgstr "Hex"
+
+#: qx/ui/control/ColorSelector.js:399
+msgid "RGB"
+msgstr "RGB"
+
+#: qx/ui/control/ColorSelector.js:431
+msgid "HSB"
+msgstr "HSB"
+
+#: qx/ui/control/DateChooser.js:253
+msgid "Last year"
+msgstr "Последний год"
+
+#: qx/ui/control/DateChooser.js:265
+msgid "Last month"
+msgstr "Последний месяц"
+
+#: qx/ui/control/DateChooser.js:277
+msgid "Next month"
+msgstr "Следующий год"
+
+#: qx/ui/control/DateChooser.js:289
+msgid "Next year"
+msgstr "Следующий месяц"
+
+#: qx/ui/form/validation/Manager.js:35
+msgid "This field is required"
+msgstr "Обязательно для заполнения"
+
+#: qx/ui/table/Table.js:1952
+msgid "one row"
+msgid_plural "%1 rows"
+msgstr[0] "одна строка"
+msgstr[1] "%1 строк"
+
+#: qx/ui/table/Table.js:1954
+msgid "one of one row"
+msgid_plural "%1 of %2 rows"
+msgstr[0] "одна из одной строки"
+msgstr[1] "%1 из %2 строк"
+
+#: qx/ui/table/columnmodel/Resize.js:199
+msgid "Reset column widths"
+msgstr "Сбросить ширину столбца"
+
+#: qx/util/Validate.js:91
+msgid "%1 is not a number."
+msgstr "%1 не является числом."
+
+#: qx/util/Validate.js:130
+msgid "'%1' is not an email address."
+msgstr "'%1' неверный адрес эл. почты."
+
+#: qx/util/Validate.js:167
+msgid "%1 is not a string."
+msgstr "%1 не является строкой."
+
+#: qx/util/Validate.js:203
+msgid "%1 is not an url."
+msgstr "%1 не является веб-ссылкой."
+
+#: qx/util/Validate.js:244
+msgid "%1 is not a color! %2"
+msgstr "%1 не является цветом! %2"
+
+#: qx/util/Validate.js:268
+msgid "%1 is not in the range from [%2, %3]."
+msgstr "%1 не входит в диапазон [%2, %3]."
+
+#: qx/util/Validate.js:291
+msgid "%1 is not in %2"
+msgstr "%1 не входит в %2"
+
+#: qx/util/Validate.js:315
+msgid "%1 does not fit %2."
+msgstr "%1 не соответствует %2."
+
+#~ msgid "Choose a date"
+#~ msgstr "Выбор даты"
+
+#~ msgid "Case sensitive"
+#~ msgstr "Регистрозависимый"
+
+#~ msgid "Search next occurrence"
+#~ msgstr "Искать далее"
+
+#~ msgid "Search items in list"
+#~ msgstr "Поиск элементов в списке"
+
+#~ msgid "Description"
+#~ msgstr "Описание"
+
+#~ msgid "ID"
+#~ msgstr "ID"
+
+#~ msgid "Search"
+#~ msgstr "Поиск"
