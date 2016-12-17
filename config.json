@@ -42,7 +42,7 @@
 
     "let": {
         "APPLICATION": "nqx",
-        "QOOXDOO_PATH": "qooxdoo-4.1-sdk",
+        "QOOXDOO_PATH": "qooxdoo-5.0.1-sdk",
         "QXTHEME"      : "qx.theme.Indigo",
         //"API_INCLUDE": ["q", "qxWeb", "qx.*", "nqx.*"],
 		"API_INCLUDE": ["q", "qx.*", "nqx.*"],

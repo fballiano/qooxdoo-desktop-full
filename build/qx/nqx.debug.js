@@ -20,7 +20,7 @@ qx.$$g = {}
 
 qx.$$loader = {
   parts : {"boot":[0]},
-  packages : {"0":{"uris":["__out__:nqx.debug.9f945a3c55da.js"]}},
+  packages : {"0":{"uris":["__out__:nqx.debug.fcf9cf548ea4.js"]}},
   urisBefore : [],
   cssBefore : [],
   boot : "boot",
@@ -933,7 +933,31 @@ qx.Bootstrap.define("qx.bom.client.Engine", {
 
       var agent = window.navigator.userAgent;
       var version = "";
-      if(qx.bom.client.Engine.__isOpera()){
+      if(qx.bom.client.Engine.__isMshtml()){
+
+        var isTrident = /Trident\/([^\);]+)(\)|;)/.test(agent);
+        if(/MSIE\s+([^\);]+)(\)|;)/.test(agent)){
+
+          version = RegExp.$1;
+          if(version < 8 && isTrident){
+
+            if(RegExp.$1 == "4.0"){
+
+              version = "8.0";
+            } else if(RegExp.$1 == "5.0"){
+
+              version = "9.0";
+            };
+          };
+        } else if(isTrident){
+
+          var match = /\brv\:(\d+?\.\d+?)\b/.exec(agent);
+          if(match){
+
+            version = match[1];
+          };
+        };
+      } else if(qx.bom.client.Engine.__isOpera()){
 
         if(/Opera[\s\/]([0-9]+)\.([0-9])([0-9]*)/.test(agent)){
 
@@ -967,30 +991,6 @@ qx.Bootstrap.define("qx.bom.client.Engine", {
 
           version = RegExp.$1;
         };
-      } else if(qx.bom.client.Engine.__isMshtml()){
-
-        var isTrident = /Trident\/([^\);]+)(\)|;)/.test(agent);
-        if(/MSIE\s+([^\);]+)(\)|;)/.test(agent)){
-
-          version = RegExp.$1;
-          if(version < 8 && isTrident){
-
-            if(RegExp.$1 == "4.0"){
-
-              version = "8.0";
-            } else if(RegExp.$1 == "5.0"){
-
-              version = "9.0";
-            };
-          };
-        } else if(isTrident){
-
-          var match = /\brv\:(\d+?\.\d+?)\b/.exec(agent);
-          if(match){
-
-            version = match[1];
-          };
-        };
       } else {
 
         var failFunction = window.qxFail;
@@ -1008,7 +1008,10 @@ qx.Bootstrap.define("qx.bom.client.Engine", {
     getName : function(){
 
       var name;
-      if(qx.bom.client.Engine.__isOpera()){
+      if(qx.bom.client.Engine.__isMshtml()){
+
+        name = "mshtml";
+      } else if(qx.bom.client.Engine.__isOpera()){
 
         name = "opera";
       } else if(qx.bom.client.Engine.__isWebkit()){
@@ -1017,9 +1020,6 @@ qx.Bootstrap.define("qx.bom.client.Engine", {
       } else if(qx.bom.client.Engine.__isGecko() || qx.bom.client.Engine.__isMaple()){
 
         name = "gecko";
-      } else if(qx.bom.client.Engine.__isMshtml()){
-
-        name = "mshtml";
       } else {
 
         var failFunction = window.qxFail;
@@ -1052,7 +1052,19 @@ qx.Bootstrap.define("qx.bom.client.Engine", {
     },
     __isMshtml : function(){
 
-      return window.navigator.cpuClass && (/MSIE\s+([^\);]+)(\)|;)/.test(window.navigator.userAgent) || /Trident\/\d+?\.\d+?/.test(window.navigator.userAgent));
+      if(window.navigator.cpuClass && (/MSIE\s+([^\);]+)(\)|;)/.test(window.navigator.userAgent) || /Trident\/\d+?\.\d+?/.test(window.navigator.userAgent))){
+
+        return true;
+      };
+      if(qx.bom.client.Engine.__isWindowsPhone()){
+
+        return true;
+      };
+      return false;
+    },
+    __isWindowsPhone : function(){
+
+      return window.navigator.userAgent.indexOf("Windows Phone") > -1;
     }
   },
   defer : function(statics){
@@ -1492,6 +1504,10 @@ qx.Bootstrap.define("qxWeb", {
     $$qx : qx,
     $init : function(arg, clazz){
 
+      if(arg.length && arg.length == 1 && arg[0] && arg[0].$widget instanceof qxWeb){
+
+        return arg[0].$widget;
+      };
       var clean = [];
       for(var i = 0;i < arg.length;i++){
 
@@ -1507,7 +1523,7 @@ qx.Bootstrap.define("qxWeb", {
           clean.push(arg[i]);
         };
       };
-      if(arg[0] && arg[0].getAttribute && arg[0].getAttribute("data-qx-class")){
+      if(arg[0] && arg[0].getAttribute && arg[0].getAttribute("data-qx-class") && clean.length < 2){
 
         clazz = qx.Bootstrap.getByName(arg[0].getAttribute("data-qx-class")) || clazz;
       };
@@ -1548,6 +1564,27 @@ qx.Bootstrap.define("qxWeb", {
         qxWeb[name] = module[name];
       };
     },
+    $attachAll : function(clazz, staticsNamespace){
+
+      for(var name in clazz.members){
+
+        if(name.indexOf("$") !== 0 && name.indexOf("_") !== 0)qxWeb.prototype[name] = clazz.members[name];
+      };
+      var destination;
+      if(staticsNamespace != null){
+
+        qxWeb[staticsNamespace] = qxWeb[staticsNamespace] || {
+        };
+        destination = qxWeb[staticsNamespace];
+      } else {
+
+        destination = qxWeb;
+      };
+      for(var name in clazz.statics){
+
+        if(name.indexOf("$") !== 0 && name.indexOf("_") !== 0 && name !== "name" && name !== "basename" && name !== "classname" && name !== "toString" && name !== name.toUpperCase())destination[name] = clazz.statics[name];
+      };
+    },
     $attachInit : function(init){
 
       this.__init.push(init);
@@ -1573,11 +1610,17 @@ qx.Bootstrap.define("qxWeb", {
       selector = [];
     } else if(qx.Bootstrap.isString(selector)){
 
-      if(context instanceof qxWeb){
+      if(context instanceof qxWeb && context.length != 0){
 
         context = context[0];
       };
-      selector = qx.bom.Selector.query(selector, context);
+      if(context instanceof qxWeb){
+
+        selector = [];
+      } else {
+
+        selector = qx.bom.Selector.query(selector, context);
+      };
     } else if((selector.nodeType === 1 || selector.nodeType === 9 || selector.nodeType === 11) || (selector.history && selector.location && selector.document)){
 
       selector = [selector];
@@ -1629,17 +1672,33 @@ qx.Bootstrap.define("qxWeb", {
       };
       return qxWeb.$init(clone, this.constructor);
     },
-    indexOf : function(elem){
+    indexOf : function(elem, fromIndex){
 
       if(!elem){
 
         return -1;
       };
-      if(qx.Bootstrap.isArray(elem)){
+      if(!fromIndex){
+
+        fromIndex = 0;
+      };
+      if(typeof fromIndex !== "number"){
+
+        return -1;
+      };
+      if(fromIndex < 0){
+
+        fromIndex = this.length + fromIndex;
+        if(fromIndex < 0){
+
+          fromIndex = 0;
+        };
+      };
+      if(qx.lang.Type.isArray(elem)){
 
         elem = elem[0];
       };
-      for(var i = 0,l = this.length;i < l;i++){
+      for(var i = fromIndex,l = this.length;i < l;i++){
 
         if(this[i] === elem){
 
@@ -8257,7 +8316,17 @@ qx.Class.define("qx.data.SingleValueBinding", {
             eventNames.push("change");
           } else {
 
-            eventNames.push(this.__getEventNameForProperty(source, propertyNames[i]));
+            var eventName = this.__getEventNameForProperty(source, propertyNames[i]);
+            if(!eventName){
+
+              if(i == 0){
+
+                throw new qx.core.AssertionError("Binding property " + propertyNames[i] + " of object " + source + " not possible: No event available. ");
+              };
+              this.__setInitialValue(undefined, targetObject, targetPropertyChain, options, sourceObject);
+              break;
+            };
+            eventNames.push(eventName);
           };
           sources[i] = source;
           if(i == propertyNames.length - 1){
@@ -8412,6 +8481,11 @@ qx.Class.define("qx.data.SingleValueBinding", {
               this.__setInitialValue(currentValue, context.targetObject, context.targetPropertyChain, context.options, context.sources[context.index]);
             };
             var eventName = this.__getEventNameForProperty(source, context.propertyNames[j]);
+            if(!eventName){
+
+              this.__resetTargetValue(context.targetObject, context.targetPropertyChain);
+              break;
+            };
             context.listenerIds[j] = this.__bindEventToProperty(source, eventName, context.targetObject, context.targetPropertyChain, context.options);
           };
         } else {
@@ -8427,6 +8501,11 @@ qx.Class.define("qx.data.SingleValueBinding", {
           } else {
 
             var eventName = this.__getEventNameForProperty(source, context.propertyNames[j]);
+          };
+          if(!eventName){
+
+            this.__resetTargetValue(context.targetObject, context.targetPropertyChain);
+            return;
           };
           context.listenerIds[j] = source.addListener(eventName, context.listeners[j]);
         };
@@ -8448,13 +8527,12 @@ qx.Class.define("qx.data.SingleValueBinding", {
           eventNames.push("change");
         } else {
 
-          try{
-
-            eventNames.push(this.__getEventNameForProperty(target, propertyNames[i]));
-          } catch(e) {
+          var eventName = this.__getEventNameForProperty(target, propertyNames[i]);
+          if(!eventName){
 
             break;
           };
+          eventNames.push(eventName);
         };
         targets[i] = target;
         var listener = function(){
@@ -8491,10 +8569,8 @@ qx.Class.define("qx.data.SingleValueBinding", {
               var eventName = "change";
             } else {
 
-              try{
-
-                var eventName = qx.data.SingleValueBinding.__getEventNameForProperty(target, propertyNames[j]);
-              } catch(e) {
+              var eventName = qx.data.SingleValueBinding.__getEventNameForProperty(target, propertyNames[j]);
+              if(!eventName){
 
                 break;
               };
@@ -8537,20 +8613,20 @@ qx.Class.define("qx.data.SingleValueBinding", {
       var properties = this.__getPropertyChainArray(propertyChain);
       return this.__getTargetFromChain(o, properties, properties.length);
     },
-    __getEventNameForProperty : function(source, propertyname){
+    __getEventNameForProperty : function(source, propertyName){
 
-      var eventName = this.__getEventForProperty(source, propertyname);
+      var eventName = this.__getEventForProperty(source, propertyName);
       if(eventName == null){
 
-        if(qx.Class.supportsEvent(source.constructor, propertyname)){
+        if(qx.Class.supportsEvent(source.constructor, propertyName)){
 
-          eventName = propertyname;
-        } else if(qx.Class.supportsEvent(source.constructor, "change" + qx.lang.String.firstUp(propertyname))){
+          eventName = propertyName;
+        } else if(qx.Class.supportsEvent(source.constructor, "change" + qx.lang.String.firstUp(propertyName))){
 
-          eventName = "change" + qx.lang.String.firstUp(propertyname);
+          eventName = "change" + qx.lang.String.firstUp(propertyName);
         } else {
 
-          throw new qx.core.AssertionError("Binding property " + propertyname + " of object " + source + " not possible: No event available. ");
+          return null;
         };
       };
       return eventName;
@@ -9900,7 +9976,7 @@ qx.Bootstrap.define("qx.bom.client.OperatingSystem", {
       };
       var input = navigator.platform || "";
       var agent = navigator.userAgent || "";
-      if(input.indexOf("Windows") != -1 || input.indexOf("Win32") != -1 || input.indexOf("Win64") != -1){
+      if(input.indexOf("Windows") != -1 || input.indexOf("Win32") != -1 || input.indexOf("Win64") != -1 || agent.indexOf("Windows Phone") != -1){
 
         return "win";
       } else if(input.indexOf("Macintosh") != -1 || input.indexOf("MacPPC") != -1 || input.indexOf("MacIntel") != -1 || input.indexOf("Mac OS X") != -1){
@@ -9934,6 +10010,7 @@ qx.Bootstrap.define("qx.bom.client.OperatingSystem", {
       return "";
     },
     __ids : {
+      "Windows NT 10.0" : "10",
       "Windows NT 6.3" : "8.1",
       "Windows NT 6.2" : "8",
       "Windows NT 6.1" : "7",
@@ -9949,6 +10026,8 @@ qx.Bootstrap.define("qx.bom.client.OperatingSystem", {
       "Win98" : "98",
       "Windows 95" : "95",
       "Win95" : "95",
+      "Mac OS X 10_10" : "10.10",
+      "Mac OS X 10.10" : "10.10",
       "Mac OS X 10_9" : "10.9",
       "Mac OS X 10.9" : "10.9",
       "Mac OS X 10_8" : "10.8",
@@ -10002,9 +10081,18 @@ qx.Bootstrap.define("qx.bom.client.OperatingSystem", {
     },
     __getVersionForMobileOs : function(userAgent){
 
+      var windows = userAgent.indexOf("Windows Phone") != -1;
       var android = userAgent.indexOf("Android") != -1;
       var iOs = userAgent.match(/(iPad|iPhone|iPod)/i) ? true : false;
-      if(android){
+      if(windows){
+
+        var windowsVersionRegExp = new RegExp(/Windows Phone (\d+(?:\.\d+)+)/i);
+        var windowsMatch = windowsVersionRegExp.exec(userAgent);
+        if(windowsMatch && windowsMatch[1]){
+
+          return windowsMatch[1];
+        };
+      } else if(android){
 
         var androidVersionRegExp = new RegExp(/ Android (\d+(?:\.\d+)+)/i);
         var androidMatch = androidVersionRegExp.exec(userAgent);
@@ -10026,7 +10114,7 @@ qx.Bootstrap.define("qx.bom.client.OperatingSystem", {
             return iOsMatch[2] + "." + iOsMatch[3];
           };
         };
-      };
+      };;
       return null;
     }
   },
@@ -10052,7 +10140,10 @@ qx.Bootstrap.define("qx.bom.client.Browser", {
       var engine = qx.bom.client.Engine.getName();
       if(engine === "webkit"){
 
-        if(name === "android"){
+        if(agent.match(/Edge\/\d+\.\d+/)){
+
+          name = "edge";
+        } else if(name === "android"){
 
           name = "mobile chrome";
         } else if(agent.indexOf("Mobile Safari") !== -1 || agent.indexOf("Mobile/") !== -1){
@@ -10061,7 +10152,7 @@ qx.Bootstrap.define("qx.bom.client.Browser", {
         } else if(agent.indexOf(" OPR/") != -1){
 
           name = "opera";
-        };;
+        };;;
       } else if(engine === "mshtml"){
 
         if(name === "msie" || name === "trident"){
@@ -10133,6 +10224,10 @@ qx.Bootstrap.define("qx.bom.client.Browser", {
         if(agent.match(/OPR(\/| )([0-9]+\.[0-9])/)){
 
           version = RegExp.$2;
+        };
+        if(agent.match(/Edge\/([\d+\.*]+)/)){
+
+          version = RegExp.$1;
         };
       };
       return version;
@@ -10212,11 +10307,18 @@ qx.Class.define("qx.event.Manager", {
     if(win.qx !== qx){
 
       var self = this;
-      qx.bom.Event.addNativeListener(win, "unload", qx.event.GlobalError.observeMethod(function(){
+      var method = function(){
 
         qx.bom.Event.removeNativeListener(win, "unload", arguments.callee);
         self.dispose();
-      }));
+      };
+      if(qx.core.Environment.get("qx.globalErrorHandling")){
+
+        qx.bom.Event.addNativeListener(win, "unload", qx.event.GlobalError.observeMethod(method));
+      } else {
+
+        qx.bom.Event.addNativeListener(win, "unload", method);
+      };
     };
     this.__listeners = {
     };
@@ -12676,7 +12778,7 @@ qx.Class.define("qx.data.Array", {
         } else {
 
           var type = "add/remove";
-          var end = startIndex + Math.abs(addedItems.length - returnArray.length);
+          var end = startIndex + Math.max(addedItems.length, returnArray.length) - 1;
         };
         this.fireDataEvent("change", {
           start : startIndex,
@@ -12899,10 +13001,11 @@ qx.Class.define("qx.data.Array", {
 
         qx.core.Assert.assertArray(array, "The parameter must be an array.");
       };
+      var oldLength = this.__array.length;
       Array.prototype.push.apply(this.__array, array);
       for(var i = 0;i < array.length;i++){
 
-        this._registerEventChaining(array[i], null, this.__array.length + i);
+        this._registerEventChaining(array[i], null, oldLength + i);
       };
       var oldLength = this.length;
       this.__updateLength();
@@ -15612,7 +15715,7 @@ qx.Bootstrap.define("qx.util.ColorUtil", {
       var red = parseInt(RegExp.$1, 10);
       var green = parseInt(RegExp.$2, 10);
       var blue = parseInt(RegExp.$3, 10);
-      var alpha = parseInt(RegExp.$4, 10);
+      var alpha = parseFloat(RegExp.$4, 10);
       if(red === 0 && green === 0 & blue === 0 && alpha === 0){
 
         return [-1, -1, -1];
@@ -16600,6 +16703,10 @@ qx.Bootstrap.define("qx.bom.client.Html", {
       var el = document.createElement("span");
       return (typeof el.textContent !== "undefined");
     },
+    getFullScreen : function(){
+
+      return document.fullscreenEnabled || document.webkitFullscreenEnabled || document.mozFullScreenEnabled || document.msFullscreenEnabled || false;
+    },
     getConsole : function(){
 
       return typeof window.console !== "undefined";
@@ -16664,6 +16771,7 @@ qx.Bootstrap.define("qx.bom.client.Html", {
     qx.core.Environment.add("html.history.state", statics.getHistoryState);
     qx.core.Environment.add("html.selection", statics.getSelection);
     qx.core.Environment.add("html.node.isequalnode", statics.getIsEqualNode);
+    qx.core.Environment.add("html.fullscreen", statics.getFullScreen);
   }
 });
 
@@ -16826,12 +16934,15 @@ qx.Bootstrap.define("qx.bom.element.Attribute", {
         element[name] = value;
       } else {
 
-        if(value === true){
+        if((hints.bools[name] || value === null) && name.indexOf("data-") !== 0){
 
-          element.setAttribute(name, name);
-        } else if(value === false || value === null){
+          if(value === true){
 
-          element.removeAttribute(name);
+            element.setAttribute(name, name);
+          } else if(value === false || value === null){
+
+            element.removeAttribute(name);
+          };
         } else {
 
           element.setAttribute(name, value);
@@ -16840,7 +16951,13 @@ qx.Bootstrap.define("qx.bom.element.Attribute", {
     },
     reset : function(element, name){
 
-      this.set(element, name, null);
+      if(name.indexOf("data-") === 0){
+
+        element.removeAttribute(name);
+      } else {
+
+        this.set(element, name, null);
+      };
     }
   }
 });
@@ -18085,6 +18202,11 @@ qx.Bootstrap.define("qx.bom.client.Css", {
 
       return qx.bom.Style.getPropertyName("userModify");
     },
+    getFloat : function(){
+
+      var style = document.documentElement.style;
+      return style.cssFloat !== undefined ? "cssFloat" : style.styleFloat !== undefined ? "styleFloat" : null;
+    },
     getLinearGradient : function(){
 
       qx.bom.client.Css.__WEBKIT_LEGACY_GRADIENT = false;
@@ -18266,6 +18388,7 @@ qx.Bootstrap.define("qx.bom.client.Css", {
     qx.core.Environment.add("css.userselect", statics.getUserSelect);
     qx.core.Environment.add("css.userselect.none", statics.getUserSelectNone);
     qx.core.Environment.add("css.appearance", statics.getAppearance);
+    qx.core.Environment.add("css.float", statics.getFloat);
     qx.core.Environment.add("css.boxsizing", statics.getBoxSizing);
     qx.core.Environment.add("css.inlineblock", statics.getInlineBlock);
     qx.core.Environment.add("css.opacity", statics.getOpacity);
@@ -19229,12 +19352,6 @@ qx.Class.define("qx.bom.webfonts.Manager", {
     };
     this.__queue = [];
     this.__preferredFormats = this.getPreferredFormats();
-    var browser = qx.core.Environment.get("browser.name");
-    var version = parseInt(qx.core.Environment.get("browser.version"), 10);
-    if((browser == "chrome" && version < 35) || (browser == "opera") && version < 22){
-
-      this.__needsAbsoluteUri = true;
-    };
   },
   statics : {
     FONT_FORMATS : ["eot", "woff", "ttf", "svg"],
@@ -19247,7 +19364,6 @@ qx.Class.define("qx.bom.webfonts.Manager", {
     __preferredFormats : null,
     __queue : null,
     __queueInterval : null,
-    __needsAbsoluteUri : false,
     require : function(familyName, sourcesList, callback, context){
 
       var sources = [];
@@ -19258,10 +19374,6 @@ qx.Class.define("qx.bom.webfonts.Manager", {
         if(split.length > 1){
 
           src = src + "#" + split[1];
-        };
-        if(this.__needsAbsoluteUri){
-
-          src = qx.util.Uri.getAbsolute(src);
         };
         sources.push(src);
       };
@@ -19639,8 +19751,8 @@ qx.Class.define("qx.bom.webfonts.Validator", {
     if(fontFamily){
 
       this.setFontFamily(fontFamily);
+      this.__requestedHelpers = this._getRequestedHelpers();
     };
-    this.__requestedHelpers = this._getRequestedHelpers();
   },
   statics : {
     COMPARISON_FONTS : {
@@ -19739,7 +19851,7 @@ qx.Class.define("qx.bom.webfonts.Validator", {
       var requestedSans = qx.bom.element.Dimension.getWidth(this.__requestedHelpers.sans);
       var requestedSerif = qx.bom.element.Dimension.getWidth(this.__requestedHelpers.serif);
       var cls = qx.bom.webfonts.Validator;
-      if(requestedSans !== cls.__defaultSizes.sans && requestedSerif !== cls.__defaultSizes.serif){
+      if(requestedSans !== cls.__defaultSizes.sans || requestedSerif !== cls.__defaultSizes.serif){
 
         return true;
       };
@@ -20564,6 +20676,7 @@ qx.Bootstrap.define("qx.bom.element.Style", {
         "userSelect" : qx.core.Environment.get("css.userselect"),
         "textOverflow" : qx.core.Environment.get("css.textoverflow"),
         "borderImage" : qx.core.Environment.get("css.borderimage"),
+        "float" : qx.core.Environment.get("css.float"),
         "userModify" : qx.core.Environment.get("css.usermodify"),
         "boxSizing" : qx.core.Environment.get("css.boxsizing")
       };
@@ -20576,7 +20689,13 @@ qx.Bootstrap.define("qx.bom.element.Style", {
           delete styleNames[key];
         } else {
 
-          this.__cssNames[key] = qx.bom.Style.getCssName(styleNames[key]);
+          if(key === 'float'){
+
+            this.__cssNames['cssFloat'] = key;
+          } else {
+
+            this.__cssNames[key] = qx.bom.Style.getCssName(styleNames[key]);
+          };
         };
       };
       this.__styleNames = styleNames;
@@ -20617,7 +20736,7 @@ qx.Bootstrap.define("qx.bom.element.Style", {
 
           continue;
         };
-        name = this.__styleNames[name] || this.__getStyleName(name) || name;
+        name = this.__cssNames[name] || name;
         if(special[name]){
 
           html.push(special[name].compile(value));
@@ -21675,220 +21794,220 @@ qx.Class.define("qx.ui.core.queue.Layout", {
   }
 });
 
-qx.Bootstrap.define("qx.bom.client.Device", {
-  statics : {
-    __ids : {
-      "iPod" : "ipod",
-      "iPad" : "ipad",
-      "iPhone" : "iphone",
-      "PSP" : "psp",
-      "PLAYSTATION 3" : "ps3",
-      "Nintendo Wii" : "wii",
-      "Nintendo DS" : "ds",
-      "XBOX" : "xbox",
-      "Xbox" : "xbox"
-    },
-    getName : function(){
-
-      var str = [];
-      for(var key in qx.bom.client.Device.__ids){
-
-        str.push(key);
-      };
-      var reg = new RegExp("(" + str.join("|").replace(/\./g, "\.") + ")", "g");
-      var match = reg.exec(navigator.userAgent);
-      if(match && match[1]){
-
-        return qx.bom.client.Device.__ids[match[1]];
-      };
-      return "pc";
-    },
-    getType : function(){
-
-      return qx.bom.client.Device.detectDeviceType(navigator.userAgent);
-    },
-    detectDeviceType : function(userAgentString){
-
-      if(qx.bom.client.Device.detectTabletDevice(userAgentString)){
-
-        return "tablet";
-      } else if(qx.bom.client.Device.detectMobileDevice(userAgentString)){
-
-        return "mobile";
-      };
-      return "desktop";
-    },
-    detectMobileDevice : function(userAgentString){
-
-      return /android.+mobile|ip(hone|od)|bada\/|blackberry|BB10|maemo|opera m(ob|in)i|fennec|NetFront|phone|psp|symbian|IEMobile|windows (ce|phone)|xda/i.test(userAgentString);
-    },
-    detectTabletDevice : function(userAgentString){
-
-      var isIE10Tablet = (/MSIE 10/i.test(userAgentString)) && (/ARM/i.test(userAgentString)) && !(/windows phone/i.test(userAgentString));
-      var isCommonTablet = (!(/android.+mobile|Tablet PC/i.test(userAgentString)) && (/Android|ipad|tablet|playbook|silk|kindle|psp/i.test(userAgentString)));
-      return isIE10Tablet || isCommonTablet;
-    },
-    getDevicePixelRatio : function(){
-
-      if(typeof window.devicePixelRatio !== "undefined"){
-
-        return window.devicePixelRatio;
-      };
-      return 1;
-    },
-    getTouch : function(){
-
-      return (("ontouchstart" in window) || window.navigator.maxTouchPoints > 0 || window.navigator.msMaxTouchPoints > 0);
-    }
-  },
-  defer : function(statics){
-
-    qx.core.Environment.add("device.name", statics.getName);
-    qx.core.Environment.add("device.touch", statics.getTouch);
-    qx.core.Environment.add("device.type", statics.getType);
-    qx.core.Environment.add("device.pixelRatio", statics.getDevicePixelRatio);
-  }
-});
-
-qx.Bootstrap.define("qx.bom.client.Event", {
-  statics : {
-    getTouch : function(){
-
-      return ("ontouchstart" in window);
-    },
-    getMsPointer : function(){
-
-      if("pointerEnabled" in window.navigator){
-
-        return window.navigator.pointerEnabled;
-      } else if("msPointerEnabled" in window.navigator){
-
-        return window.navigator.msPointerEnabled;
-      };
-      return false;
-    },
-    getHelp : function(){
-
-      return ("onhelp" in document);
-    },
-    getHashChange : function(){
-
-      var engine = qx.bom.client.Engine.getName();
-      var hashchange = "onhashchange" in window;
-      return (engine !== "mshtml" && hashchange) || (engine === "mshtml" && "documentMode" in document && document.documentMode >= 8 && hashchange);
-    },
-    getDispatchEvent : function(){
-
-      return typeof document.dispatchEvent == "function";
-    },
-    getCustomEvent : function(){
-
-      if(!window.CustomEvent){
-
-        return false;
-      };
-      try{
-
-        new window.CustomEvent("foo");
-        return true;
-      } catch(ex) {
-
-        return false;
-      };
-    },
-    getMouseEvent : function(){
-
-      if(!window.MouseEvent){
-
-        return false;
-      };
-      try{
-
-        new window.MouseEvent("foo");
-        return true;
-      } catch(ex) {
-
-        return false;
-      };
-    },
-    getMouseWheel : function(win){
-
-      if(!win){
-
-        win = window;
-      };
-      var targets = [win, win.document, win.document.body];
-      var target = win;
-      var type = "DOMMouseScroll";
-      for(var i = 0;i < targets.length;i++){
-
-        if(qx.bom.Event.supportsEvent(targets[i], "wheel")){
-
-          type = "wheel";
-          target = targets[i];
-          break;
-        };
-        if(qx.bom.Event.supportsEvent(targets[i], "mousewheel")){
-
-          type = "mousewheel";
-          target = targets[i];
-          break;
-        };
-      };
-      return {
-        type : type,
-        target : target
-      };
-    }
-  },
-  defer : function(statics){
-
-    qx.core.Environment.add("event.touch", statics.getTouch);
-    qx.core.Environment.add("event.mouseevent", statics.getMouseEvent);
-    qx.core.Environment.add("event.dispatchevent", statics.getDispatchEvent);
-    qx.core.Environment.add("event.customevent", statics.getCustomEvent);
-    qx.core.Environment.add("event.mspointer", statics.getMsPointer);
-    qx.core.Environment.add("event.help", statics.getHelp);
-    qx.core.Environment.add("event.hashchange", statics.getHashChange);
-    qx.core.Environment.add("event.mousewheel", statics.getMouseWheel);
-  }
-});
-
-qx.Bootstrap.define("qx.module.Environment", {
-  statics : {
-    get : function(key){
-
-      return qx.core.Environment.get(key);
-    },
-    add : function(key, value){
-
-      qx.core.Environment.add(key, value);
-      return this;
-    }
-  },
-  defer : function(statics){
-
-    qx.core.Environment.get("browser.name");
-    qx.core.Environment.get("browser.version");
-    qx.core.Environment.get("browser.quirksmode");
-    qx.core.Environment.get("browser.documentmode");
-    qx.core.Environment.get("engine.name");
-    qx.core.Environment.get("engine.version");
-    qx.core.Environment.get("device.name");
-    qx.core.Environment.get("device.type");
-    qx.core.Environment.get("event.touch");
-    qx.core.Environment.get("event.mspointer");
-    qxWeb.$attachStatic({
-      "env" : {
-        get : statics.get,
-        add : statics.add
-      }
-    });
-  }
-});
-
 qx.Bootstrap.define("qx.module.Css", {
   statics : {
+    _getHeight : function(force){
+
+      var elem = this[0];
+      if(elem){
+
+        if(qx.dom.Node.isElement(elem)){
+
+          var elementHeight;
+          if(force){
+
+            var stylesToSwap = {
+              display : "block",
+              position : "absolute",
+              visibility : "hidden"
+            };
+            elementHeight = qx.module.Css.__swap(elem, stylesToSwap, "_getHeight", this);
+          } else {
+
+            elementHeight = qx.bom.element.Dimension.getHeight(elem);
+          };
+          return elementHeight;
+        } else if(qx.dom.Node.isDocument(elem)){
+
+          return qx.bom.Document.getHeight(qx.dom.Node.getWindow(elem));
+        } else if(qx.dom.Node.isWindow(elem)){
+
+          return qx.bom.Viewport.getHeight(elem);
+        };;
+      };
+      return null;
+    },
+    _getWidth : function(force){
+
+      var elem = this[0];
+      if(elem){
+
+        if(qx.dom.Node.isElement(elem)){
+
+          var elementWidth;
+          if(force){
+
+            var stylesToSwap = {
+              display : "block",
+              position : "absolute",
+              visibility : "hidden"
+            };
+            elementWidth = qx.module.Css.__swap(elem, stylesToSwap, "_getWidth", this);
+          } else {
+
+            elementWidth = qx.bom.element.Dimension.getWidth(elem);
+          };
+          return elementWidth;
+        } else if(qx.dom.Node.isDocument(elem)){
+
+          return qx.bom.Document.getWidth(qx.dom.Node.getWindow(elem));
+        } else if(qx.dom.Node.isWindow(elem)){
+
+          return qx.bom.Viewport.getWidth(elem);
+        };;
+      };
+      return null;
+    },
+    _getContentHeight : function(force){
+
+      var obj = this[0];
+      if(qx.dom.Node.isElement(obj)){
+
+        var contentHeight;
+        if(force){
+
+          var stylesToSwap = {
+            position : "absolute",
+            visibility : "hidden",
+            display : "block"
+          };
+          contentHeight = qx.module.Css.__swap(obj, stylesToSwap, "_getContentHeight", this);
+        } else {
+
+          contentHeight = qx.bom.element.Dimension.getContentHeight(obj);
+        };
+        return contentHeight;
+      };
+      return null;
+    },
+    _getContentWidth : function(force){
+
+      var obj = this[0];
+      if(qx.dom.Node.isElement(obj)){
+
+        var contentWidth;
+        if(force){
+
+          var stylesToSwap = {
+            position : "absolute",
+            visibility : "hidden",
+            display : "block"
+          };
+          contentWidth = qx.module.Css.__swap(obj, stylesToSwap, "_getContentWidth", this);
+        } else {
+
+          contentWidth = qx.bom.element.Dimension.getContentWidth(obj);
+        };
+        return contentWidth;
+      };
+      return null;
+    },
+    __displayDefaults : {
+    },
+    __getDisplayDefault : function(tagName, doc){
+
+      var defaults = qx.module.Css.__displayDefaults;
+      if(!defaults[tagName]){
+
+        var docu = doc || document;
+        var tempEl = qxWeb(docu.createElement(tagName)).appendTo(doc.body);
+        defaults[tagName] = tempEl.getStyle("display");
+        tempEl.remove();
+      };
+      return defaults[tagName] || "";
+    },
+    __swap : function(element, styles, methodName, context){
+
+      var currentValues = {
+      };
+      for(var styleProperty in styles){
+
+        currentValues[styleProperty] = element.style[styleProperty];
+        element.style[styleProperty] = styles[styleProperty];
+      };
+      var value = context[methodName]();
+      for(var styleProperty in currentValues){
+
+        element.style[styleProperty] = currentValues[styleProperty];
+      };
+      return value;
+    },
+    includeStylesheet : function(uri, doc){
+
+      qx.bom.Stylesheet.includeFile(uri, doc);
+    }
+  },
+  members : {
+    getHeight : function(force){
+
+      return this._getHeight(force);
+    },
+    getWidth : function(force){
+
+      return this._getWidth(force);
+    },
+    getContentHeight : function(force){
+
+      return this._getContentHeight(force);
+    },
+    getContentWidth : function(force){
+
+      return this._getContentWidth(force);
+    },
+    show : function(){
+
+      this._forEachElementWrapped(function(item){
+
+        var currentVal = item.getStyle("display");
+        var prevVal = item[0].$$qPrevDisp;
+        var newVal;
+        if(currentVal == "none"){
+
+          if(prevVal && prevVal != "none"){
+
+            newVal = prevVal;
+          } else {
+
+            var doc = qxWeb.getDocument(item[0]);
+            newVal = qx.module.Css.__getDisplayDefault(item[0].tagName, doc);
+          };
+          item.setStyle("display", newVal);
+          item[0].$$qPrevDisp = "none";
+        };
+      });
+      return this;
+    },
+    hide : function(){
+
+      this._forEachElementWrapped(function(item){
+
+        var prevStyle = item.getStyle("display");
+        if(prevStyle !== "none"){
+
+          item[0].$$qPrevDisp = prevStyle;
+          item.setStyle("display", "none");
+        };
+      });
+      return this;
+    },
+    getPosition : function(){
+
+      var obj = this[0];
+      if(qx.dom.Node.isElement(obj)){
+
+        return qx.bom.element.Location.getPosition(obj);
+      };
+      return null;
+    },
+    getOffset : function(mode){
+
+      var elem = this[0];
+      if(elem && qx.dom.Node.isElement(elem)){
+
+        return qx.bom.element.Location.get(elem, mode);
+      };
+      return null;
+    },
     setStyle : function(name, value){
 
       if(/\w-\w/.test(name)){
@@ -22003,388 +22122,17 @@ qx.Bootstrap.define("qx.module.Css", {
         qx.bom.element.Class.replace(item, oldName, newName);
       });
       return this;
-    },
-    getHeight : function(force){
-
-      var elem = this[0];
-      if(elem){
-
-        if(qx.dom.Node.isElement(elem)){
-
-          var elementHeight;
-          if(force){
-
-            var stylesToSwap = {
-              display : "block",
-              position : "absolute",
-              visibility : "hidden"
-            };
-            elementHeight = qx.module.Css.__swap(elem, stylesToSwap, qx.module.Css.getHeight, this);
-          } else {
-
-            elementHeight = qx.bom.element.Dimension.getHeight(elem);
-          };
-          return elementHeight;
-        } else if(qx.dom.Node.isDocument(elem)){
-
-          return qx.bom.Document.getHeight(qx.dom.Node.getWindow(elem));
-        } else if(qx.dom.Node.isWindow(elem)){
-
-          return qx.bom.Viewport.getHeight(elem);
-        };;
-      };
-      return null;
-    },
-    getWidth : function(force){
-
-      var elem = this[0];
-      if(elem){
-
-        if(qx.dom.Node.isElement(elem)){
-
-          var elementWidth;
-          if(force){
-
-            var stylesToSwap = {
-              display : "block",
-              position : "absolute",
-              visibility : "hidden"
-            };
-            elementWidth = qx.module.Css.__swap(elem, stylesToSwap, qx.module.Css.getWidth, this);
-          } else {
-
-            elementWidth = qx.bom.element.Dimension.getWidth(elem);
-          };
-          return elementWidth;
-        } else if(qx.dom.Node.isDocument(elem)){
-
-          return qx.bom.Document.getWidth(qx.dom.Node.getWindow(elem));
-        } else if(qx.dom.Node.isWindow(elem)){
-
-          return qx.bom.Viewport.getWidth(elem);
-        };;
-      };
-      return null;
-    },
-    getOffset : function(mode){
-
-      var elem = this[0];
-      if(elem && qx.dom.Node.isElement(elem)){
-
-        return qx.bom.element.Location.get(elem, mode);
-      };
-      return null;
-    },
-    getContentHeight : function(force){
-
-      var obj = this[0];
-      if(qx.dom.Node.isElement(obj)){
-
-        var contentHeight;
-        if(force){
-
-          var stylesToSwap = {
-            position : "absolute",
-            visibility : "hidden",
-            display : "block"
-          };
-          contentHeight = qx.module.Css.__swap(obj, stylesToSwap, qx.module.Css.getContentHeight, this);
-        } else {
-
-          contentHeight = qx.bom.element.Dimension.getContentHeight(obj);
-        };
-        return contentHeight;
-      };
-      return null;
-    },
-    getContentWidth : function(force){
-
-      var obj = this[0];
-      if(qx.dom.Node.isElement(obj)){
-
-        var contentWidth;
-        if(force){
-
-          var stylesToSwap = {
-            position : "absolute",
-            visibility : "hidden",
-            display : "block"
-          };
-          contentWidth = qx.module.Css.__swap(obj, stylesToSwap, qx.module.Css.getContentWidth, this);
-        } else {
-
-          contentWidth = qx.bom.element.Dimension.getContentWidth(obj);
-        };
-        return contentWidth;
-      };
-      return null;
-    },
-    getPosition : function(){
-
-      var obj = this[0];
-      if(qx.dom.Node.isElement(obj)){
-
-        return qx.bom.element.Location.getPosition(obj);
-      };
-      return null;
-    },
-    includeStylesheet : function(uri, doc){
-
-      qx.bom.Stylesheet.includeFile(uri, doc);
-    },
-    hide : function(){
-
-      this._forEachElementWrapped(function(item){
-
-        var prevStyle = item.getStyle("display");
-        if(prevStyle !== "none"){
-
-          item[0].$$qPrevDisp = prevStyle;
-          item.setStyle("display", "none");
-        };
-      });
-      return this;
-    },
-    show : function(){
-
-      this._forEachElementWrapped(function(item){
-
-        var currentVal = item.getStyle("display");
-        var prevVal = item[0].$$qPrevDisp;
-        var newVal;
-        if(currentVal == "none"){
-
-          if(prevVal && prevVal != "none"){
-
-            newVal = prevVal;
-          } else {
-
-            var doc = qxWeb.getDocument(item[0]);
-            newVal = qx.module.Css.__getDisplayDefault(item[0].tagName, doc);
-          };
-          item.setStyle("display", newVal);
-          item[0].$$qPrevDisp = "none";
-        };
-      });
-      return this;
-    },
-    __displayDefaults : {
-    },
-    __getDisplayDefault : function(tagName, doc){
-
-      var defaults = qx.module.Css.__displayDefaults;
-      if(!defaults[tagName]){
-
-        var docu = doc || document;
-        var tempEl = qxWeb(docu.createElement(tagName)).appendTo(doc.body);
-        defaults[tagName] = tempEl.getStyle("display");
-        tempEl.remove();
-      };
-      return defaults[tagName] || "";
-    },
-    __swap : function(element, styles, callback, context){
-
-      var currentValues = {
-      };
-      for(var styleProperty in styles){
-
-        currentValues[styleProperty] = element.style[styleProperty];
-        element.style[styleProperty] = styles[styleProperty];
-      };
-      var value = callback.call(context);
-      for(var styleProperty in currentValues){
-
-        element.style[styleProperty] = currentValues[styleProperty];
-      };
-      return value;
     }
   },
   defer : function(statics){
 
+    qxWeb.$attachAll(this);
     qxWeb.$attach({
-      "setStyle" : statics.setStyle,
-      "getStyle" : statics.getStyle,
-      "setStyles" : statics.setStyles,
-      "getStyles" : statics.getStyles,
-      "addClass" : statics.addClass,
-      "addClasses" : statics.addClasses,
-      "removeClass" : statics.removeClass,
-      "removeClasses" : statics.removeClasses,
-      "hasClass" : statics.hasClass,
-      "getClass" : statics.getClass,
-      "toggleClass" : statics.toggleClass,
-      "toggleClasses" : statics.toggleClasses,
-      "replaceClass" : statics.replaceClass,
-      "getHeight" : statics.getHeight,
-      "getWidth" : statics.getWidth,
-      "getOffset" : statics.getOffset,
-      "getContentHeight" : statics.getContentHeight,
-      "getContentWidth" : statics.getContentWidth,
-      "getPosition" : statics.getPosition,
-      "hide" : statics.hide,
-      "show" : statics.show
+      "_getWidth" : statics._getWidth,
+      "_getHeight" : statics._getHeight,
+      "_getContentHeight" : statics._getContentHeight,
+      "_getContentWidth" : statics._getContentWidth
     });
-    qxWeb.$attachStatic({
-      "includeStylesheet" : statics.includeStylesheet
-    });
-  }
-});
-
-qx.Bootstrap.define("qx.bom.element.Class", {
-  statics : {
-    __splitter : /\s+/g,
-    __trim : /^\s+|\s+$/g,
-    add : {
-      "native" : function(element, name){
-
-        element.classList.add(name);
-        return name;
-      },
-      "default" : function(element, name){
-
-        if(!this.has(element, name)){
-
-          element.className += (element.className ? " " : "") + name;
-        };
-        return name;
-      }
-    }[qx.core.Environment.get("html.classlist") ? "native" : "default"],
-    addClasses : {
-      "native" : function(element, classes){
-
-        for(var i = 0;i < classes.length;i++){
-
-          element.classList.add(classes[i]);
-        };
-        return element.className;
-      },
-      "default" : function(element, classes){
-
-        var keys = {
-        };
-        var result;
-        var old = element.className;
-        if(old){
-
-          result = old.split(this.__splitter);
-          for(var i = 0,l = result.length;i < l;i++){
-
-            keys[result[i]] = true;
-          };
-          for(var i = 0,l = classes.length;i < l;i++){
-
-            if(!keys[classes[i]]){
-
-              result.push(classes[i]);
-            };
-          };
-        } else {
-
-          result = classes;
-        };
-        return element.className = result.join(" ");
-      }
-    }[qx.core.Environment.get("html.classlist") ? "native" : "default"],
-    get : function(element){
-
-      var className = element.className;
-      if(typeof className.split !== 'function'){
-
-        if(typeof className === 'object'){
-
-          if(qx.Bootstrap.getClass(className) == 'SVGAnimatedString'){
-
-            className = className.baseVal;
-          } else {
-
-            if(qx.core.Environment.get("qx.debug")){
-
-              qx.log.Logger.warn(this, "className for element " + element + " cannot be determined");
-            };
-            className = '';
-          };
-        };
-        if(typeof className === 'undefined'){
-
-          if(qx.core.Environment.get("qx.debug")){
-
-            qx.log.Logger.warn(this, "className for element " + element + " is undefined");
-          };
-          className = '';
-        };
-      };
-      return className;
-    },
-    has : {
-      "native" : function(element, name){
-
-        return element.classList.contains(name);
-      },
-      "default" : function(element, name){
-
-        var regexp = new RegExp("(^|\\s)" + name + "(\\s|$)");
-        return regexp.test(element.className);
-      }
-    }[qx.core.Environment.get("html.classlist") ? "native" : "default"],
-    remove : {
-      "native" : function(element, name){
-
-        element.classList.remove(name);
-        return name;
-      },
-      "default" : function(element, name){
-
-        var regexp = new RegExp("(^|\\s)" + name + "(\\s|$)");
-        element.className = element.className.replace(regexp, "$2");
-        return name;
-      }
-    }[qx.core.Environment.get("html.classlist") ? "native" : "default"],
-    removeClasses : {
-      "native" : function(element, classes){
-
-        for(var i = 0;i < classes.length;i++){
-
-          element.classList.remove(classes[i]);
-        };
-        return element.className;
-      },
-      "default" : function(element, classes){
-
-        var reg = new RegExp("\\b" + classes.join("\\b|\\b") + "\\b", "g");
-        return element.className = element.className.replace(reg, "").replace(this.__trim, "").replace(this.__splitter, " ");
-      }
-    }[qx.core.Environment.get("html.classlist") ? "native" : "default"],
-    replace : function(element, oldName, newName){
-
-      if(!this.has(element, oldName)){
-
-        return "";
-      };
-      this.remove(element, oldName);
-      return this.add(element, newName);
-    },
-    toggle : {
-      "native" : function(element, name, toggle){
-
-        if(toggle === undefined){
-
-          element.classList.toggle(name);
-        } else {
-
-          toggle ? this.add(element, name) : this.remove(element, name);
-        };
-        return name;
-      },
-      "default" : function(element, name, toggle){
-
-        if(toggle == null){
-
-          toggle = !this.has(element, name);
-        };
-        toggle ? this.add(element, name) : this.remove(element, name);
-        return name;
-      }
-    }[qx.core.Environment.get("html.classlist") ? "native" : "default"]
   }
 });
 
@@ -22592,6 +22340,378 @@ qx.Bootstrap.define("qx.bom.element.Location", {
   }
 });
 
+qx.Bootstrap.define("qx.bom.element.Class", {
+  statics : {
+    __splitter : /\s+/g,
+    __trim : /^\s+|\s+$/g,
+    add : {
+      "native" : function(element, name){
+
+        if(name.length > 0){
+
+          element.classList.add(name);
+        };
+        return name;
+      },
+      "default" : function(element, name){
+
+        if(!this.has(element, name)){
+
+          element.className += (element.className ? " " : "") + name;
+        };
+        return name;
+      }
+    }[qx.core.Environment.get("html.classlist") ? "native" : "default"],
+    addClasses : {
+      "native" : function(element, classes){
+
+        for(var i = 0;i < classes.length;i++){
+
+          if(classes[i].length > 0){
+
+            element.classList.add(classes[i]);
+          };
+        };
+        return element.className;
+      },
+      "default" : function(element, classes){
+
+        var keys = {
+        };
+        var result;
+        var old = element.className;
+        if(old){
+
+          result = old.split(this.__splitter);
+          for(var i = 0,l = result.length;i < l;i++){
+
+            keys[result[i]] = true;
+          };
+          for(var i = 0,l = classes.length;i < l;i++){
+
+            if(!keys[classes[i]]){
+
+              result.push(classes[i]);
+            };
+          };
+        } else {
+
+          result = classes;
+        };
+        return element.className = result.join(" ");
+      }
+    }[qx.core.Environment.get("html.classlist") ? "native" : "default"],
+    get : function(element){
+
+      var className = element.className;
+      if(typeof className.split !== 'function'){
+
+        if(typeof className === 'object'){
+
+          if(qx.Bootstrap.getClass(className) == 'SVGAnimatedString'){
+
+            className = className.baseVal;
+          } else {
+
+            if(qx.core.Environment.get("qx.debug")){
+
+              qx.log.Logger.warn(this, "className for element " + element + " cannot be determined");
+            };
+            className = '';
+          };
+        };
+        if(typeof className === 'undefined'){
+
+          if(qx.core.Environment.get("qx.debug")){
+
+            qx.log.Logger.warn(this, "className for element " + element + " is undefined");
+          };
+          className = '';
+        };
+      };
+      return className;
+    },
+    has : {
+      "native" : function(element, name){
+
+        return element.classList.contains(name);
+      },
+      "default" : function(element, name){
+
+        var regexp = new RegExp("(^|\\s)" + name + "(\\s|$)");
+        return regexp.test(element.className);
+      }
+    }[qx.core.Environment.get("html.classlist") ? "native" : "default"],
+    remove : {
+      "native" : function(element, name){
+
+        element.classList.remove(name);
+        return name;
+      },
+      "default" : function(element, name){
+
+        var regexp = new RegExp("(^|\\s)" + name + "(\\s|$)");
+        element.className = element.className.replace(regexp, "$2");
+        return name;
+      }
+    }[qx.core.Environment.get("html.classlist") ? "native" : "default"],
+    removeClasses : {
+      "native" : function(element, classes){
+
+        for(var i = 0;i < classes.length;i++){
+
+          element.classList.remove(classes[i]);
+        };
+        return element.className;
+      },
+      "default" : function(element, classes){
+
+        var reg = new RegExp("\\b" + classes.join("\\b|\\b") + "\\b", "g");
+        return element.className = element.className.replace(reg, "").replace(this.__trim, "").replace(this.__splitter, " ");
+      }
+    }[qx.core.Environment.get("html.classlist") ? "native" : "default"],
+    replace : function(element, oldName, newName){
+
+      if(!this.has(element, oldName)){
+
+        return "";
+      };
+      this.remove(element, oldName);
+      return this.add(element, newName);
+    },
+    toggle : {
+      "native" : function(element, name, toggle){
+
+        if(toggle === undefined){
+
+          element.classList.toggle(name);
+        } else {
+
+          toggle ? this.add(element, name) : this.remove(element, name);
+        };
+        return name;
+      },
+      "default" : function(element, name, toggle){
+
+        if(toggle == null){
+
+          toggle = !this.has(element, name);
+        };
+        toggle ? this.add(element, name) : this.remove(element, name);
+        return name;
+      }
+    }[qx.core.Environment.get("html.classlist") ? "native" : "default"]
+  }
+});
+
+qx.Bootstrap.define("qx.bom.client.Device", {
+  statics : {
+    __ids : {
+      "Windows Phone" : "iemobile",
+      "iPod" : "ipod",
+      "iPad" : "ipad",
+      "iPhone" : "iphone",
+      "PSP" : "psp",
+      "PLAYSTATION 3" : "ps3",
+      "Nintendo Wii" : "wii",
+      "Nintendo DS" : "ds",
+      "XBOX" : "xbox",
+      "Xbox" : "xbox"
+    },
+    getName : function(){
+
+      var str = [];
+      for(var key in qx.bom.client.Device.__ids){
+
+        str.push(key);
+      };
+      var reg = new RegExp("(" + str.join("|").replace(/\./g, "\.") + ")", "g");
+      var match = reg.exec(navigator.userAgent);
+      if(match && match[1]){
+
+        return qx.bom.client.Device.__ids[match[1]];
+      };
+      return "pc";
+    },
+    getType : function(){
+
+      return qx.bom.client.Device.detectDeviceType(navigator.userAgent);
+    },
+    detectDeviceType : function(userAgentString){
+
+      if(qx.bom.client.Device.detectTabletDevice(userAgentString)){
+
+        return "tablet";
+      } else if(qx.bom.client.Device.detectMobileDevice(userAgentString)){
+
+        return "mobile";
+      };
+      return "desktop";
+    },
+    detectMobileDevice : function(userAgentString){
+
+      return /android.+mobile|ip(hone|od)|bada\/|blackberry|BB10|maemo|opera m(ob|in)i|fennec|NetFront|phone|psp|symbian|IEMobile|windows (ce|phone)|xda/i.test(userAgentString);
+    },
+    detectTabletDevice : function(userAgentString){
+
+      var isIE10Tablet = (/MSIE 10/i.test(userAgentString)) && (/ARM/i.test(userAgentString)) && !(/windows phone/i.test(userAgentString));
+      var isCommonTablet = (!(/android.+mobile|Tablet PC/i.test(userAgentString)) && (/Android|ipad|tablet|playbook|silk|kindle|psp/i.test(userAgentString)));
+      return isIE10Tablet || isCommonTablet;
+    },
+    getDevicePixelRatio : function(){
+
+      if(typeof window.devicePixelRatio !== "undefined"){
+
+        return window.devicePixelRatio;
+      };
+      return 1;
+    },
+    getTouch : function(){
+
+      return (("ontouchstart" in window) || window.navigator.maxTouchPoints > 0 || window.navigator.msMaxTouchPoints > 0);
+    }
+  },
+  defer : function(statics){
+
+    qx.core.Environment.add("device.name", statics.getName);
+    qx.core.Environment.add("device.touch", statics.getTouch);
+    qx.core.Environment.add("device.type", statics.getType);
+    qx.core.Environment.add("device.pixelRatio", statics.getDevicePixelRatio);
+  }
+});
+
+qx.Bootstrap.define("qx.bom.client.Event", {
+  statics : {
+    getTouch : function(){
+
+      return ("ontouchstart" in window);
+    },
+    getMsPointer : function(){
+
+      if("pointerEnabled" in window.navigator){
+
+        return window.navigator.pointerEnabled;
+      } else if("msPointerEnabled" in window.navigator){
+
+        return window.navigator.msPointerEnabled;
+      };
+      return false;
+    },
+    getHelp : function(){
+
+      return ("onhelp" in document);
+    },
+    getHashChange : function(){
+
+      var engine = qx.bom.client.Engine.getName();
+      var hashchange = "onhashchange" in window;
+      return (engine !== "mshtml" && hashchange) || (engine === "mshtml" && "documentMode" in document && document.documentMode >= 8 && hashchange);
+    },
+    getDispatchEvent : function(){
+
+      return typeof document.dispatchEvent == "function";
+    },
+    getCustomEvent : function(){
+
+      if(!window.CustomEvent){
+
+        return false;
+      };
+      try{
+
+        new window.CustomEvent("foo");
+        return true;
+      } catch(ex) {
+
+        return false;
+      };
+    },
+    getMouseEvent : function(){
+
+      if(!window.MouseEvent){
+
+        return false;
+      };
+      try{
+
+        new window.MouseEvent("foo");
+        return true;
+      } catch(ex) {
+
+        return false;
+      };
+    },
+    getMouseWheel : function(win){
+
+      if(!win){
+
+        win = window;
+      };
+      var targets = [win, win.document, win.document.body];
+      var target = win;
+      var type = "DOMMouseScroll";
+      for(var i = 0;i < targets.length;i++){
+
+        if(qx.bom.Event.supportsEvent(targets[i], "wheel")){
+
+          type = "wheel";
+          target = targets[i];
+          break;
+        };
+        if(qx.bom.Event.supportsEvent(targets[i], "mousewheel")){
+
+          type = "mousewheel";
+          target = targets[i];
+          break;
+        };
+      };
+      return {
+        type : type,
+        target : target
+      };
+    }
+  },
+  defer : function(statics){
+
+    qx.core.Environment.add("event.touch", statics.getTouch);
+    qx.core.Environment.add("event.mouseevent", statics.getMouseEvent);
+    qx.core.Environment.add("event.dispatchevent", statics.getDispatchEvent);
+    qx.core.Environment.add("event.customevent", statics.getCustomEvent);
+    qx.core.Environment.add("event.mspointer", statics.getMsPointer);
+    qx.core.Environment.add("event.help", statics.getHelp);
+    qx.core.Environment.add("event.hashchange", statics.getHashChange);
+    qx.core.Environment.add("event.mousewheel", statics.getMouseWheel);
+  }
+});
+
+qx.Bootstrap.define("qx.module.Environment", {
+  statics : {
+    get : function(key){
+
+      return qx.core.Environment.get(key);
+    },
+    add : function(key, value){
+
+      qx.core.Environment.add(key, value);
+      return this;
+    }
+  },
+  defer : function(statics){
+
+    qx.core.Environment.get("browser.name");
+    qx.core.Environment.get("browser.version");
+    qx.core.Environment.get("browser.quirksmode");
+    qx.core.Environment.get("browser.documentmode");
+    qx.core.Environment.get("engine.name");
+    qx.core.Environment.get("engine.version");
+    qx.core.Environment.get("device.name");
+    qx.core.Environment.get("device.type");
+    qx.core.Environment.get("event.touch");
+    qx.core.Environment.get("event.mspointer");
+    qxWeb.$attachAll(this, "env");
+  }
+});
+
 qx.Bootstrap.define("qx.module.Polyfill", {
 });
 
@@ -22605,6 +22725,163 @@ qx.Bootstrap.define("qx.module.Event", {
       off : {
       }
     },
+    __isReady : false,
+    ready : function(callback){
+
+      if(document.readyState === "complete"){
+
+        window.setTimeout(callback, 1);
+        return;
+      };
+      var onWindowLoad = function(){
+
+        qx.module.Event.__isReady = true;
+        callback();
+      };
+      qxWeb(window).on("load", onWindowLoad);
+      var wrappedCallback = function(){
+
+        qxWeb(window).off("load", onWindowLoad);
+        callback();
+      };
+      if(qxWeb.env.get("engine.name") !== "mshtml" || qxWeb.env.get("browser.documentmode") > 8){
+
+        qx.bom.Event.addNativeListener(document, "DOMContentLoaded", wrappedCallback);
+      } else {
+
+        var timer = function(){
+
+          if(qx.module.Event.__isReady){
+
+            return;
+          };
+          try{
+
+            document.documentElement.doScroll("left");
+            if(document.body){
+
+              wrappedCallback();
+            };
+          } catch(error) {
+
+            window.setTimeout(timer, 100);
+          };
+        };
+        timer();
+      };
+    },
+    $registerEventNormalization : function(types, normalizer){
+
+      if(!qx.lang.Type.isArray(types)){
+
+        types = [types];
+      };
+      var registry = qx.module.Event.__normalizations;
+      for(var i = 0,l = types.length;i < l;i++){
+
+        var type = types[i];
+        if(qx.lang.Type.isFunction(normalizer)){
+
+          if(!registry[type]){
+
+            registry[type] = [];
+          };
+          registry[type].push(normalizer);
+        };
+      };
+    },
+    $unregisterEventNormalization : function(types, normalizer){
+
+      if(!qx.lang.Type.isArray(types)){
+
+        types = [types];
+      };
+      var registry = qx.module.Event.__normalizations;
+      for(var i = 0,l = types.length;i < l;i++){
+
+        var type = types[i];
+        if(registry[type]){
+
+          qx.lang.Array.remove(registry[type], normalizer);
+        };
+      };
+    },
+    $getEventNormalizationRegistry : function(){
+
+      return qx.module.Event.__normalizations;
+    },
+    $registerEventHook : function(types, registerHook, unregisterHook){
+
+      if(!qx.lang.Type.isArray(types)){
+
+        types = [types];
+      };
+      var onHooks = qx.module.Event.__hooks.on;
+      for(var i = 0,l = types.length;i < l;i++){
+
+        var type = types[i];
+        if(qx.lang.Type.isFunction(registerHook)){
+
+          if(!onHooks[type]){
+
+            onHooks[type] = [];
+          };
+          onHooks[type].push(registerHook);
+        };
+      };
+      if(!unregisterHook){
+
+        return;
+      };
+      var offHooks = qx.module.Event.__hooks.off;
+      for(var i = 0,l = types.length;i < l;i++){
+
+        var type = types[i];
+        if(qx.lang.Type.isFunction(unregisterHook)){
+
+          if(!offHooks[type]){
+
+            offHooks[type] = [];
+          };
+          offHooks[type].push(unregisterHook);
+        };
+      };
+    },
+    $unregisterEventHook : function(types, registerHook, unregisterHook){
+
+      if(!qx.lang.Type.isArray(types)){
+
+        types = [types];
+      };
+      var onHooks = qx.module.Event.__hooks.on;
+      for(var i = 0,l = types.length;i < l;i++){
+
+        var type = types[i];
+        if(onHooks[type]){
+
+          qx.lang.Array.remove(onHooks[type], registerHook);
+        };
+      };
+      if(!unregisterHook){
+
+        return;
+      };
+      var offHooks = qx.module.Event.__hooks.off;
+      for(var i = 0,l = types.length;i < l;i++){
+
+        var type = types[i];
+        if(offHooks[type]){
+
+          qx.lang.Array.remove(offHooks[type], unregisterHook);
+        };
+      };
+    },
+    $getEventHookRegistry : function(){
+
+      return qx.module.Event.__hooks;
+    }
+  },
+  members : {
     on : function(type, listener, context, useCapture){
 
       for(var i = 0;i < this.length;i++){
@@ -22636,10 +22913,7 @@ qx.Bootstrap.define("qx.module.Event", {
           listener.apply(this, [event]);
         }.bind(ctx, el);
         bound.original = listener;
-        if(qx.bom.Event.supportsEvent(el, type)){
-
-          qx.bom.Event.addNativeListener(el, type, bound, useCapture);
-        };
+        qx.bom.Event.addNativeListener(el, type, bound, useCapture);
         if(!el.$$emitter){
 
           el.$$emitter = new qx.event.Emitter();
@@ -22703,12 +22977,15 @@ qx.Bootstrap.define("qx.module.Event", {
 
                 storedContext = el.__ctx[id];
               };
-              el.$$emitter.off(types[i], storedListener, storedContext || context);
+              var result = el.$$emitter.off(types[i], storedListener, storedContext || context);
               if(removeAll || storedListener.original == listener){
 
                 qx.bom.Event.removeNativeListener(el, types[i], storedListener, useCapture);
               };
-              delete el.__listener[types[i]][id];
+              if(result !== null){
+
+                delete el.__listener[types[i]][id];
+              };
               if(hasStoredContext){
 
                 delete el.__ctx[id];
@@ -22845,51 +23122,6 @@ qx.Bootstrap.define("qx.module.Event", {
         };
       };
     },
-    __isReady : false,
-    ready : function(callback){
-
-      if(document.readyState === "complete"){
-
-        window.setTimeout(callback, 1);
-        return;
-      };
-      var onWindowLoad = function(){
-
-        qx.module.Event.__isReady = true;
-        callback();
-      };
-      qxWeb(window).on("load", onWindowLoad);
-      var wrappedCallback = function(){
-
-        qxWeb(window).off("load", onWindowLoad);
-        callback();
-      };
-      if(qxWeb.env.get("engine.name") !== "mshtml" || qxWeb.env.get("browser.documentmode") > 8){
-
-        qx.bom.Event.addNativeListener(document, "DOMContentLoaded", wrappedCallback);
-      } else {
-
-        var timer = function(){
-
-          if(qx.module.Event.__isReady){
-
-            return;
-          };
-          try{
-
-            document.documentElement.doScroll("left");
-            if(document.body){
-
-              wrappedCallback();
-            };
-          } catch(error) {
-
-            window.setTimeout(timer, 100);
-          };
-        };
-        timer();
-      };
-    },
     hover : function(callbackIn, callbackOut){
 
       this.on("pointerover", callbackIn, this);
@@ -22905,14 +23137,26 @@ qx.Bootstrap.define("qx.module.Event", {
       var listener = function(e){
 
         var eventTarget = qxWeb(e.getTarget());
+        var targetToMatch = typeof target == "string" ? this.find(target) : qxWeb(target);
         if(eventTarget.is(target)){
 
           callback.call(context, eventTarget, qxWeb.object.clone(e));
+        } else {
+
+          for(var i = 0,l = targetToMatch.length;i < l;i++){
+
+            if(eventTarget.isChildOf(qxWeb(targetToMatch[i]))){
+
+              callback.call(context, eventTarget, qxWeb.object.clone(e));
+              break;
+            };
+          };
         };
       };
       this.forEach(function(el){
 
         var matchTarget = {
+          target : target,
           type : eventType,
           listener : listener,
           callback : callback,
@@ -22952,140 +23196,34 @@ qx.Bootstrap.define("qx.module.Event", {
       }, this);
       return this;
     },
-    $registerNormalization : function(types, normalizer){
+    hasMatchListener : function(type, target, callback, context){
 
-      if(!qx.lang.Type.isArray(types)){
+      context = context !== undefined ? context : this;
+      for(var j = 0,l = this.length;j < l;j++){
 
-        types = [types];
-      };
-      var registry = qx.module.Event.__normalizations;
-      for(var i = 0,l = types.length;i < l;i++){
+        var infos = this[j].$$matchTargetInfo || [];
+        for(var i = infos.length - 1;i >= 0;i--){
 
-        var type = types[i];
-        if(qx.lang.Type.isFunction(normalizer)){
+          var entry = infos[i];
+          if(entry.type == type && entry.callback == callback && entry.target == target && entry.context == context){
 
-          if(!registry[type]){
-
-            registry[type] = [];
+            return true;
           };
-          registry[type].push(normalizer);
         };
       };
-    },
-    $unregisterNormalization : function(types, normalizer){
-
-      if(!qx.lang.Type.isArray(types)){
-
-        types = [types];
-      };
-      var registry = qx.module.Event.__normalizations;
-      for(var i = 0,l = types.length;i < l;i++){
-
-        var type = types[i];
-        if(registry[type]){
-
-          qx.lang.Array.remove(registry[type], normalizer);
-        };
-      };
-    },
-    $getRegistry : function(){
-
-      return qx.module.Event.__normalizations;
-    },
-    $registerEventHook : function(types, registerHook, unregisterHook){
-
-      if(!qx.lang.Type.isArray(types)){
-
-        types = [types];
-      };
-      var onHooks = qx.module.Event.__hooks.on;
-      for(var i = 0,l = types.length;i < l;i++){
-
-        var type = types[i];
-        if(qx.lang.Type.isFunction(registerHook)){
-
-          if(!onHooks[type]){
-
-            onHooks[type] = [];
-          };
-          onHooks[type].push(registerHook);
-        };
-      };
-      if(!unregisterHook){
-
-        return;
-      };
-      var offHooks = qx.module.Event.__hooks.off;
-      for(var i = 0,l = types.length;i < l;i++){
-
-        var type = types[i];
-        if(qx.lang.Type.isFunction(unregisterHook)){
-
-          if(!offHooks[type]){
-
-            offHooks[type] = [];
-          };
-          offHooks[type].push(unregisterHook);
-        };
-      };
-    },
-    $unregisterEventHook : function(types, registerHook, unregisterHook){
-
-      if(!qx.lang.Type.isArray(types)){
-
-        types = [types];
-      };
-      var onHooks = qx.module.Event.__hooks.on;
-      for(var i = 0,l = types.length;i < l;i++){
-
-        var type = types[i];
-        if(onHooks[type]){
-
-          qx.lang.Array.remove(onHooks[type], registerHook);
-        };
-      };
-      if(!unregisterHook){
-
-        return;
-      };
-      var offHooks = qx.module.Event.__hooks.off;
-      for(var i = 0,l = types.length;i < l;i++){
-
-        var type = types[i];
-        if(offHooks[type]){
-
-          qx.lang.Array.remove(offHooks[type], unregisterHook);
-        };
-      };
-    },
-    $getHookRegistry : function(){
-
-      return qx.module.Event.__hooks;
+      return false;
     }
   },
   defer : function(statics){
 
-    qxWeb.$attach({
-      "on" : statics.on,
-      "off" : statics.off,
-      "allOff" : statics.allOff,
-      "offById" : statics.offById,
-      "once" : statics.once,
-      "emit" : statics.emit,
-      "hasListener" : statics.hasListener,
-      "copyEventsTo" : statics.copyEventsTo,
-      "hover" : statics.hover,
-      "onMatchTarget" : statics.onMatchTarget,
-      "offMatchTarget" : statics.offMatchTarget
-    });
+    qxWeb.$attachAll(this);
     qxWeb.$attachStatic({
-      "ready" : statics.ready,
-      "$registerEventNormalization" : statics.$registerNormalization,
-      "$unregisterEventNormalization" : statics.$unregisterNormalization,
-      "$getEventNormalizationRegistry" : statics.$getRegistry,
+      "$registerEventNormalization" : statics.$registerEventNormalization,
+      "$unregisterEventNormalization" : statics.$unregisterEventNormalization,
+      "$getEventNormalizationRegistry" : statics.$getEventNormalizationRegistry,
       "$registerEventHook" : statics.$registerEventHook,
       "$unregisterEventHook" : statics.$unregisterEventHook,
-      "$getEventHookRegistry" : statics.$getHookRegistry
+      "$getEventHookRegistry" : statics.$getEventHookRegistry
     });
   }
 });
@@ -23095,10 +23233,6 @@ qx.Bootstrap.define("qx.module.event.PointerHandler", {
     TYPES : ["pointermove", "pointerover", "pointerout", "pointerdown", "pointerup", "pointercancel", "gesturebegin", "gesturemove", "gesturefinish", "gesturecancel"],
     register : function(element, type){
 
-      if(!element["on" + type]){
-
-        element["on" + type] = true;
-      };
       if(!element.$$pointerHandler){
 
         if(!qx.core.Environment.get("event.dispatchevent")){
@@ -23173,6 +23307,7 @@ qx.Bootstrap.define("qx.event.handler.PointerCore", {
       pointercancel : "gesturecancel",
       pointermove : "gesturemove"
     },
+    LEFT_BUTTON : (qx.core.Environment.get("engine.name") == "mshtml" && qx.core.Environment.get("browser.documentmode") <= 8) ? 1 : 0,
     SIM_MOUSE_DISTANCE : 25,
     SIM_MOUSE_DELAY : 2500,
     __lastTouch : null
@@ -23184,11 +23319,12 @@ qx.Bootstrap.define("qx.event.handler.PointerCore", {
     this.__eventNames = [];
     this.__buttonStates = [];
     this.__activeTouches = [];
+    this._processedFlag = "$$qx" + this.classname.substr(this.classname.lastIndexOf(".") + 1) + "Processed";
     var engineName = qx.core.Environment.get("engine.name");
     var docMode = parseInt(qx.core.Environment.get("browser.documentmode"), 10);
     if(engineName == "mshtml" && docMode == 10){
 
-      this.__eventNames = ["MSPointerDown", "MSPointerMove", "MSPointerUp", "MSPointerCancel", "MSPointerOver", "MSPointerOut"];
+      this.__eventNames = ["MSPointerDown", "MSPointerMove", "MSPointerUp", "MSPointerCancel", "MSPointerOver", "MSPointerOut", "pointerdown", "pointermove", "pointerup", "pointercancel", "pointerover", "pointerout"];
       this._initPointerObserver();
     } else {
 
@@ -23220,6 +23356,7 @@ qx.Bootstrap.define("qx.event.handler.PointerCore", {
     __buttonStates : null,
     __primaryIdentifier : null,
     __activeTouches : null,
+    _processedFlag : null,
     _initPointerObserver : function(){
 
       this._initObserver(this._onPointerEvent);
@@ -23259,11 +23396,11 @@ qx.Bootstrap.define("qx.event.handler.PointerCore", {
     },
     _onTouchEvent : function(domEvent){
 
-      if(domEvent.$$qxProcessed){
+      if(domEvent[this._processedFlag]){
 
         return;
       };
-      domEvent.$$qxProcessed = true;
+      domEvent[this._processedFlag] = true;
       var type = qx.event.handler.PointerCore.TOUCH_TO_POINTER_MAPPING[domEvent.type];
       var changedTouches = domEvent.changedTouches;
       this._determineActiveTouches(domEvent.type, changedTouches);
@@ -23334,11 +23471,11 @@ qx.Bootstrap.define("qx.event.handler.PointerCore", {
     },
     _onMouseEvent : function(domEvent){
 
-      if(domEvent.$$qxProcessed){
+      if(domEvent[this._processedFlag]){
 
         return;
       };
-      domEvent.$$qxProcessed = true;
+      domEvent[this._processedFlag] = true;
       if(this._isSimulatedMouseEvent(domEvent.clientX, domEvent.clientY)){
 
         return;
@@ -23348,6 +23485,13 @@ qx.Bootstrap.define("qx.event.handler.PointerCore", {
         this.__buttonStates[domEvent.which] = 1;
       } else if(domEvent.type == "mouseup"){
 
+        if(qx.core.Environment.get("os.name") == "osx" && qx.core.Environment.get("engine.name") == "gecko"){
+
+          if(this.__buttonStates[domEvent.which] != 1 && domEvent.ctrlKey){
+
+            this.__buttonStates[1] = 0;
+          };
+        };
         this.__buttonStates[domEvent.which] = 0;
       };
       var type = qx.event.handler.PointerCore.MOUSE_TO_POINTER_MAPPING[domEvent.type];
@@ -23440,7 +23584,7 @@ qx.Bootstrap.define("qx.event.handler.PointerCore", {
       target = target || domEvent.target;
       type = type || domEvent.type;
       var gestureEvent;
-      if(type == "pointerdown" || type == "pointerup" || type == "pointermove"){
+      if((domEvent.pointerType !== "mouse" || domEvent.button <= qx.event.handler.PointerCore.LEFT_BUTTON) && (type == "pointerdown" || type == "pointerup" || type == "pointermove")){
 
         gestureEvent = new qx.event.type.dom.Pointer(qx.event.handler.PointerCore.POINTER_TO_GESTURE_MAPPING[type], domEvent);
         qx.event.type.dom.Pointer.normalize(gestureEvent);
@@ -23765,15 +23909,6 @@ qx.Bootstrap.define("qx.module.Animation", {
     "animationEnd" : undefined
   },
   statics : {
-    getAnimationHandles : function(){
-
-      var animationHandles = [];
-      for(var i = 0;i < this.length;i++){
-
-        animationHandles[i] = this[i].$$animation;
-      };
-      return animationHandles;
-    },
     _fadeOut : {
       duration : 700,
       timing : "ease-out",
@@ -23800,16 +23935,6 @@ qx.Bootstrap.define("qx.module.Animation", {
           opacity : 1
         }
       }
-    },
-    animate : function(desc, duration){
-
-      qx.module.Animation._animate.bind(this)(desc, duration, false);
-      return this;
-    },
-    animateReverse : function(desc, duration){
-
-      qx.module.Animation._animate.bind(this)(desc, duration, true);
-      return this;
     },
     _animate : function(desc, duration, reverse){
 
@@ -23851,6 +23976,27 @@ qx.Bootstrap.define("qx.module.Animation", {
           self.emit("animationEnd");
         }, el);
       });
+    }
+  },
+  members : {
+    getAnimationHandles : function(){
+
+      var animationHandles = [];
+      for(var i = 0;i < this.length;i++){
+
+        animationHandles[i] = this[i].$$animation;
+      };
+      return animationHandles;
+    },
+    animate : function(desc, duration){
+
+      qx.module.Animation._animate.bind(this)(desc, duration, false);
+      return this;
+    },
+    animateReverse : function(desc, duration){
+
+      qx.module.Animation._animate.bind(this)(desc, duration, true);
+      return this;
     },
     play : function(){
 
@@ -23924,18 +24070,7 @@ qx.Bootstrap.define("qx.module.Animation", {
   },
   defer : function(statics){
 
-    qxWeb.$attach({
-      "animate" : statics.animate,
-      "animateReverse" : statics.animateReverse,
-      "fadeIn" : statics.fadeIn,
-      "fadeOut" : statics.fadeOut,
-      "play" : statics.play,
-      "pause" : statics.pause,
-      "stop" : statics.stop,
-      "isEnded" : statics.isEnded,
-      "isPlaying" : statics.isPlaying,
-      "getAnimationHandles" : statics.getAnimationHandles
-    });
+    qxWeb.$attachAll(this);
     if(qxWeb.env.get("browser.name") === "ie" && qxWeb.env.get("browser.version") <= 9){
 
       statics._fadeIn.keyFrames[100].opacity = 0.99;
@@ -24036,6 +24171,10 @@ qx.Bootstrap.define("qx.bom.client.CssAnimation", {
     },
     getAnimationStart : function(){
 
+      if(qx.bom.Event.supportsEvent(window, "webkitanimationstart")){
+
+        return "webkitAnimationStart";
+      };
       var mapping = {
         "msAnimation" : "MSAnimationStart",
         "WebkitAnimation" : "webkitAnimationStart",
@@ -24047,6 +24186,10 @@ qx.Bootstrap.define("qx.bom.client.CssAnimation", {
     },
     getAnimationIteration : function(){
 
+      if(qx.bom.Event.supportsEvent(window, "webkitanimationiteration")){
+
+        return "webkitAnimationIteration";
+      };
       var mapping = {
         "msAnimation" : "MSAnimationIteration",
         "WebkitAnimation" : "webkitAnimationIteration",
@@ -24058,6 +24201,10 @@ qx.Bootstrap.define("qx.bom.client.CssAnimation", {
     },
     getAnimationEnd : function(){
 
+      if(qx.bom.Event.supportsEvent(window, "webkitanimationend")){
+
+        return "webkitAnimationEnd";
+      };
       var mapping = {
         "msAnimation" : "MSAnimationEnd",
         "WebkitAnimation" : "webkitAnimationEnd",
@@ -24194,7 +24341,10 @@ qx.Bootstrap.define("qx.bom.element.AnimationCss", {
     },
     __onAnimationStart : function(e){
 
-      e.target.$$animation.emit("start", e.target);
+      if(e.target.$$animation){
+
+        e.target.$$animation.emit("start", e.target);
+      };
     },
     __onAnimationIteration : function(e){
 
@@ -24341,7 +24491,31 @@ qx.Bootstrap.define("qx.bom.element.AnimationCss", {
       qx.bom.Stylesheet.addRule(this.__sheet, selector, rule);
       this.__rules[rule] = name;
       return name;
+    },
+    __clearCache : function(){
+
+      this.__id = 0;
+      if(this.__sheet){
+
+        this.__sheet.ownerNode.remove();
+        this.__sheet = null;
+        this.__rules = {
+        };
+      };
     }
+  },
+  defer : function(statics){
+
+    if(qx.core.Environment.get("os.name") === "ios" && parseInt(qx.core.Environment.get("os.version")) >= 8){
+
+      document.addEventListener("visibilitychange", function(){
+
+        if(!document.hidden){
+
+          statics.__clearCache();
+        };
+      }, false);
+    };
   }
 });
 
@@ -26746,6 +26920,11 @@ qx.Class.define("qx.html.Element", {
   },
   destruct : function(){
 
+    if(this.$$hash){
+
+      delete qx.html.Element._modified[this.$$hash];
+      delete qx.html.Element._scroll[this.$$hash];
+    };
     var el = this.__element;
     if(el){
 
@@ -27288,7 +27467,7 @@ qx.Class.define("qx.event.type.Pointer", {
     getDocumentLeft : function(){
 
       var x = this.base(arguments);
-      if(x == 0 && this.getPointerType() == "touch"){
+      if(x == 0 && this.getPointerType() == "touch" && this._native._original !== undefined){
 
         x = Math.round(this._native._original.changedTouches[0].pageX) || 0;
       };
@@ -27297,7 +27476,7 @@ qx.Class.define("qx.event.type.Pointer", {
     getDocumentTop : function(){
 
       var y = this.base(arguments);
-      if(y == 0 && this.getPointerType() == "touch"){
+      if(y == 0 && this.getPointerType() == "touch" && this._native._original !== undefined){
 
         y = Math.round(this._native._original.changedTouches[0].pageY) || 0;
       };
@@ -27408,7 +27587,6 @@ qx.Class.define("qx.event.handler.Pointer", {
     this.__window = manager.getWindow();
     this.__root = this.__window.document;
     qx.event.handler.PointerCore.apply(this, [this.__root]);
-    this.__root.$$pointerHandler = this;
   },
   members : {
     __manager : null,
@@ -27435,7 +27613,7 @@ qx.Class.define("qx.event.handler.Pointer", {
 
         target = qx.bom.Event.getTarget(domEvent);
       };
-      while(target && target.getAttribute("qxanonymous")){
+      while(target && target.getAttribute && target.getAttribute("qxanonymous")){
 
         target = target.parentNode;
       };
@@ -27449,7 +27627,7 @@ qx.Class.define("qx.event.handler.Pointer", {
         qx.event.type.dom.Pointer.normalize(domEvent);
         domEvent.srcElement = target;
         qx.event.Registration.fireEvent(target, type, qx.event.type.Pointer, [domEvent, target, null, true, true]);
-        if(type == "pointerdown" || type == "pointerup" || type == "pointermove" || type == "pointercancel"){
+        if((domEvent.getPointerType() !== "mouse" || domEvent.button <= qx.event.handler.PointerCore.LEFT_BUTTON) && (type == "pointerdown" || type == "pointerup" || type == "pointermove" || type == "pointercancel")){
 
           qx.event.Registration.fireEvent(this.__root, qx.event.handler.PointerCore.POINTER_TO_GESTURE_MAPPING[type], qx.event.type.Pointer, [domEvent, target, null, false, false]);
         };
@@ -27458,6 +27636,10 @@ qx.Class.define("qx.event.handler.Pointer", {
     },
     _onPointerEvent : function(domEvent){
 
+      if(domEvent._original && domEvent._original[this._processedFlag]){
+
+        return;
+      };
       var type = qx.event.handler.PointerCore.MSPOINTER_TO_POINTER_MAPPING[domEvent.type] || domEvent.type;
       this._fireEvent(domEvent, type, qx.bom.Event.getTarget(domEvent));
     },
@@ -27607,8 +27789,13 @@ qx.Bootstrap.define("qx.event.handler.GestureCore", {
     GESTURE_EVENTS : ["gesturebegin", "gesturefinish", "gesturemove", "gesturecancel"],
     TAP_MAX_DISTANCE : {
       "touch" : 40,
-      "mouse" : 50,
+      "mouse" : 5,
       "pen" : 20
+    },
+    DOUBLETAP_MAX_DISTANCE : {
+      "touch" : 10,
+      "mouse" : 4,
+      "pen" : 10
     },
     SWIPE_DIRECTION : {
       x : ["left", "right"],
@@ -27644,13 +27831,6 @@ qx.Bootstrap.define("qx.event.handler.GestureCore", {
     __initialDistance : null,
     _initObserver : function(){
 
-      qx.event.handler.GestureCore.TYPES.forEach(function(type){
-
-        if(!this.__defaultTarget["on" + type]){
-
-          this.__defaultTarget["on" + type] = true;
-        };
-      }.bind(this));
       qx.event.handler.GestureCore.GESTURE_EVENTS.forEach(function(gestureType){
 
         qxWeb(this.__defaultTarget).on(gestureType, this.checkAndFireGesture, this);
@@ -27705,6 +27885,10 @@ qx.Bootstrap.define("qx.event.handler.GestureCore", {
 
         this.__stopLongTapTimer(this.__gesture[domEvent.pointerId]);
         delete this.__gesture[domEvent.pointerId];
+      };
+      if(this._hasIntermediaryHandler(target)){
+
+        return;
       };
       this.__gesture[domEvent.pointerId] = {
         "startTime" : new Date().getTime(),
@@ -27949,8 +28133,8 @@ qx.Bootstrap.define("qx.event.handler.GestureCore", {
     __isBelowDoubleTapDistance : function(x1, y1, x2, y2, type){
 
       var clazz = qx.event.handler.GestureCore;
-      var inX = Math.abs(x1 - x2) < clazz.TAP_MAX_DISTANCE[type];
-      var inY = Math.abs(y1 - y2) < clazz.TAP_MAX_DISTANCE[type];
+      var inX = Math.abs(x1 - x2) < clazz.DOUBLETAP_MAX_DISTANCE[type];
+      var inY = Math.abs(y1 - y2) < clazz.DOUBLETAP_MAX_DISTANCE[type];
       return inX && inY;
     },
     _getDeltaCoordinates : function(domEvent){
@@ -28191,6 +28375,10 @@ qx.Bootstrap.define("qx.util.Wheel", {
     __normalize : function(delta){
 
       var absDelta = Math.abs(delta);
+      if(absDelta === 0){
+
+        return 0;
+      };
       if(qx.util.Wheel.MINSCROLL == null || qx.util.Wheel.MINSCROLL > absDelta){
 
         qx.util.Wheel.MINSCROLL = absDelta;
@@ -30060,16 +30248,25 @@ qx.Class.define("qx.event.handler.Window", {
         qx.bom.Event.removeNativeListener(this._window, key, this._onNativeWrapper);
       };
     },
-    _onNative : qx.event.GlobalError.observeMethod(function(e){
+    _onNative : function(){
+
+      var callback = qx.core.Environment.select("qx.globalErrorHandling", {
+        "true" : qx.event.GlobalError.observeMethod(this.__onNativeHandler),
+        "false" : this.__onNativeHandler
+      });
+      callback.apply(this, arguments);
+    },
+    __onNativeHandler : function(e){
 
       if(this.isDisposed()){
 
         return;
       };
       var win = this._window;
+      var doc;
       try{
 
-        var doc = win.document;
+        doc = win.document;
       } catch(ex) {
 
         return;
@@ -30087,7 +30284,7 @@ qx.Class.define("qx.event.handler.Window", {
           return result;
         };
       };
-    })
+    }
   },
   destruct : function(){
 
@@ -30210,12 +30407,28 @@ qx.Class.define("qx.event.handler.Application", {
       this._onNativeLoadWrapped = null;
       this._onNativeUnloadWrapped = null;
     },
-    _onNativeLoad : qx.event.GlobalError.observeMethod(function(){
+    _onNativeLoad : function(){
+
+      var callback = qx.core.Environment.select("qx.globalErrorHandling", {
+        "true" : qx.event.GlobalError.observeMethod(this.__onNativeLoadHandler),
+        "false" : this.__onNativeLoadHandler
+      });
+      callback.apply(this, arguments);
+    },
+    __onNativeLoadHandler : function(){
 
       this.__domReady = true;
       this.__fireReady();
-    }),
-    _onNativeUnload : qx.event.GlobalError.observeMethod(function(){
+    },
+    _onNativeUnload : function(){
+
+      var callback = qx.core.Environment.select("qx.globalErrorHandling", {
+        "true" : qx.event.GlobalError.observeMethod(this.__onNativeUnloadHandler),
+        "false" : this.__onNativeUnloadHandler
+      });
+      callback.apply(this, arguments);
+    },
+    __onNativeUnloadHandler : function(){
 
       if(!this.__isUnloaded){
 
@@ -30231,7 +30444,7 @@ qx.Class.define("qx.event.handler.Application", {
           qx.core.ObjectRegistry.shutdown();
         };
       };
-    })
+    }
   },
   destruct : function(){
 
@@ -30988,7 +31201,7 @@ qx.Bootstrap.define("qx.event.handler.TouchCore", {
           delete this.__pointers[domEvent.pointerId];
         };
       };
-      if(type == "touchend" || type == "touchcancel" && domEvent.changedTouches[0]){
+      if((type == "touchend" || type == "touchcancel") && domEvent.changedTouches[0]){
 
         delete this.__touchStartPosition[domEvent.changedTouches[0].identifier];
       };
@@ -32123,7 +32336,7 @@ qx.Bootstrap.define("qx.bom.client.Plugin", {
     getWindowsMediaVersion : function(){
 
       var entry = qx.bom.client.Plugin.__db["wmv"];
-      return qx.bom.client.Plugin.__getVersion(entry.control, entry.plugin);
+      return qx.bom.client.Plugin.__getVersion(entry.control, entry.plugin, true);
     },
     getDivXVersion : function(){
 
@@ -32148,7 +32361,7 @@ qx.Bootstrap.define("qx.bom.client.Plugin", {
     getWindowsMedia : function(){
 
       var entry = qx.bom.client.Plugin.__db["wmv"];
-      return qx.bom.client.Plugin.__isAvailable(entry.control, entry.plugin);
+      return qx.bom.client.Plugin.__isAvailable(entry.control, entry.plugin, true);
     },
     getDivX : function(){
 
@@ -32165,14 +32378,14 @@ qx.Bootstrap.define("qx.bom.client.Plugin", {
       var entry = qx.bom.client.Plugin.__db["pdf"];
       return qx.bom.client.Plugin.__isAvailable(entry.control, entry.plugin);
     },
-    __getVersion : function(activeXName, pluginNames){
+    __getVersion : function(activeXName, pluginNames, forceActiveX){
 
-      var available = qx.bom.client.Plugin.__isAvailable(activeXName, pluginNames);
+      var available = qx.bom.client.Plugin.__isAvailable(activeXName, pluginNames, forceActiveX);
       if(!available){
 
         return "";
       };
-      if(qx.bom.client.Engine.getName() == "mshtml"){
+      if(qx.bom.client.Engine.getName() == "mshtml" && (qx.bom.client.Browser.getDocumentMode() < 11 || forceActiveX)){
 
         try{
 
@@ -32231,9 +32444,9 @@ qx.Bootstrap.define("qx.bom.client.Plugin", {
         return "";
       };
     },
-    __isAvailable : function(activeXName, pluginNames){
+    __isAvailable : function(activeXName, pluginNames, forceActiveX){
 
-      if(qx.bom.client.Engine.getName() == "mshtml"){
+      if(qx.bom.client.Engine.getName() == "mshtml" && (qx.bom.client.Browser.getDocumentMode() < 11 || forceActiveX)){
 
         if(!this.getActiveX()){
 
@@ -33795,6 +34008,10 @@ qx.Class.define("qx.ui.core.Widget", {
       event : "changeToolTipText"
     },
     blockToolTip : {
+      check : "Boolean",
+      init : false
+    },
+    showToolTipWhenDisabled : {
       check : "Boolean",
       init : false
     },
@@ -35565,226 +35782,6 @@ qx.Class.define("qx.ui.core.Widget", {
   }
 });
 
-qx.Class.define("qx.ui.core.EventHandler", {
-  extend : qx.core.Object,
-  implement : qx.event.IEventHandler,
-  construct : function(){
-
-    this.base(arguments);
-    this.__manager = qx.event.Registration.getManager(window);
-  },
-  statics : {
-    PRIORITY : qx.event.Registration.PRIORITY_FIRST,
-    SUPPORTED_TYPES : {
-      mousemove : 1,
-      mouseover : 1,
-      mouseout : 1,
-      mousedown : 1,
-      mouseup : 1,
-      click : 1,
-      dblclick : 1,
-      contextmenu : 1,
-      mousewheel : 1,
-      keyup : 1,
-      keydown : 1,
-      keypress : 1,
-      keyinput : 1,
-      capture : 1,
-      losecapture : 1,
-      focusin : 1,
-      focusout : 1,
-      focus : 1,
-      blur : 1,
-      activate : 1,
-      deactivate : 1,
-      appear : 1,
-      disappear : 1,
-      dragstart : 1,
-      dragend : 1,
-      dragover : 1,
-      dragleave : 1,
-      drop : 1,
-      drag : 1,
-      dragchange : 1,
-      droprequest : 1,
-      touchstart : 1,
-      touchend : 1,
-      touchmove : 1,
-      touchcancel : 1,
-      tap : 1,
-      longtap : 1,
-      swipe : 1,
-      dbltap : 1,
-      track : 1,
-      trackend : 1,
-      trackstart : 1,
-      pinch : 1,
-      rotate : 1,
-      roll : 1,
-      pointermove : 1,
-      pointerover : 1,
-      pointerout : 1,
-      pointerdown : 1,
-      pointerup : 1,
-      pointercancel : 1
-    },
-    IGNORE_CAN_HANDLE : false
-  },
-  members : {
-    __manager : null,
-    __focusEvents : {
-      focusin : 1,
-      focusout : 1,
-      focus : 1,
-      blur : 1
-    },
-    __ignoreDisabled : {
-      mouseover : 1,
-      mouseout : 1,
-      appear : 1,
-      disappear : 1
-    },
-    canHandleEvent : function(target, type){
-
-      return target instanceof qx.ui.core.Widget;
-    },
-    _dispatchEvent : function(domEvent){
-
-      var domTarget = domEvent.getTarget();
-      var widgetTarget = qx.ui.core.Widget.getWidgetByElement(domTarget);
-      var targetChanged = false;
-      while(widgetTarget && widgetTarget.isAnonymous()){
-
-        var targetChanged = true;
-        widgetTarget = widgetTarget.getLayoutParent();
-      };
-      if(widgetTarget && targetChanged && domEvent.getType() == "activate"){
-
-        widgetTarget.getContentElement().activate();
-      };
-      if(this.__focusEvents[domEvent.getType()]){
-
-        widgetTarget = widgetTarget && widgetTarget.getFocusTarget();
-        if(!widgetTarget){
-
-          return;
-        };
-      };
-      if(domEvent.getRelatedTarget){
-
-        var domRelatedTarget = domEvent.getRelatedTarget();
-        var widgetRelatedTarget = qx.ui.core.Widget.getWidgetByElement(domRelatedTarget);
-        while(widgetRelatedTarget && widgetRelatedTarget.isAnonymous()){
-
-          widgetRelatedTarget = widgetRelatedTarget.getLayoutParent();
-        };
-        if(widgetRelatedTarget){
-
-          if(this.__focusEvents[domEvent.getType()]){
-
-            widgetRelatedTarget = widgetRelatedTarget.getFocusTarget();
-          };
-          if(widgetRelatedTarget === widgetTarget){
-
-            return;
-          };
-        };
-      };
-      var currentTarget = domEvent.getCurrentTarget();
-      var currentWidget = qx.ui.core.Widget.getWidgetByElement(currentTarget);
-      if(!currentWidget || currentWidget.isAnonymous()){
-
-        return;
-      };
-      if(this.__focusEvents[domEvent.getType()]){
-
-        currentWidget = currentWidget.getFocusTarget();
-      };
-      var type = domEvent.getType();
-      if(!currentWidget || !(currentWidget.isEnabled() || this.__ignoreDisabled[type])){
-
-        return;
-      };
-      var capture = domEvent.getEventPhase() == qx.event.type.Event.CAPTURING_PHASE;
-      var listeners = this.__manager.getListeners(currentWidget, type, capture);
-      if(!listeners || listeners.length === 0){
-
-        return;
-      };
-      var widgetEvent = qx.event.Pool.getInstance().getObject(domEvent.constructor);
-      domEvent.clone(widgetEvent);
-      widgetEvent.setTarget(widgetTarget);
-      widgetEvent.setRelatedTarget(widgetRelatedTarget || null);
-      widgetEvent.setCurrentTarget(currentWidget);
-      var orig = domEvent.getOriginalTarget();
-      if(orig){
-
-        var widgetOriginalTarget = qx.ui.core.Widget.getWidgetByElement(orig);
-        while(widgetOriginalTarget && widgetOriginalTarget.isAnonymous()){
-
-          widgetOriginalTarget = widgetOriginalTarget.getLayoutParent();
-        };
-        widgetEvent.setOriginalTarget(widgetOriginalTarget);
-      } else {
-
-        widgetEvent.setOriginalTarget(domTarget);
-      };
-      for(var i = 0,l = listeners.length;i < l;i++){
-
-        var context = listeners[i].context || currentWidget;
-        listeners[i].handler.call(context, widgetEvent);
-      };
-      if(widgetEvent.getPropagationStopped()){
-
-        domEvent.stopPropagation();
-      };
-      if(widgetEvent.getDefaultPrevented()){
-
-        domEvent.preventDefault();
-      };
-      qx.event.Pool.getInstance().poolObject(widgetEvent);
-    },
-    registerEvent : function(target, type, capture){
-
-      var elem;
-      if(type === "focus" || type === "blur"){
-
-        elem = target.getFocusElement();
-      } else {
-
-        elem = target.getContentElement();
-      };
-      if(elem){
-
-        elem.addListener(type, this._dispatchEvent, this, capture);
-      };
-    },
-    unregisterEvent : function(target, type, capture){
-
-      var elem;
-      if(type === "focus" || type === "blur"){
-
-        elem = target.getFocusElement();
-      } else {
-
-        elem = target.getContentElement();
-      };
-      if(elem){
-
-        elem.removeListener(type, this._dispatchEvent, this, capture);
-      };
-    }
-  },
-  destruct : function(){
-
-    this.__manager = null;
-  },
-  defer : function(statics){
-
-    qx.event.Registration.addHandler(statics);
-  }
-});
-
 qx.Class.define("qx.event.handler.DragDrop", {
   extend : qx.core.Object,
   implement : qx.event.IEventHandler,
@@ -35858,6 +35855,11 @@ qx.Class.define("qx.event.handler.DragDrop", {
     supportsAction : function(type){
 
       return !!this.__actions[type];
+    },
+    setDropAllowed : function(isAllowed){
+
+      this.__validDrop = isAllowed;
+      this.__detectAction();
     },
     getData : function(type){
 
@@ -36208,6 +36210,7 @@ qx.Class.define("qx.event.handler.DragDrop", {
   },
   destruct : function(){
 
+    qx.event.Registration.removeListener(window, "blur", this._onWindowBlur, this);
     this.__dragTarget = this.__dropTarget = this.__manager = this.__root = this.__types = this.__actions = this.__keys = this.__cache = null;
   },
   defer : function(statics){
@@ -36318,6 +36321,10 @@ qx.Class.define("qx.event.type.Drag", {
         return null;
       };
       return this.getManager().getCurrentAction();
+    },
+    setDropAllowed : function(isAllowed){
+
+      this.getManager().setDropAllowed(isAllowed);
     },
     getDragTarget : function(){
 
@@ -36959,6 +36966,9 @@ qx.Class.define("qx.ui.basic.Image", {
     loaded : "qx.event.type.Event",
     aborted : "qx.event.type.Event"
   },
+  statics : {
+    PLACEHOLDER_IMAGE : "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+  },
   members : {
     __width : null,
     __height : null,
@@ -37133,7 +37143,9 @@ qx.Class.define("qx.ui.basic.Image", {
     },
     _styleSource : function(){
 
-      var source = qx.util.AliasManager.getInstance().resolve(this.getSource());
+      var AliasManager = qx.util.AliasManager.getInstance();
+      var ResourceManager = qx.util.ResourceManager.getInstance();
+      var source = AliasManager.resolve(this.getSource());
       var element = this.getContentElement();
       if(this.__wrapper){
 
@@ -37153,6 +37165,18 @@ qx.Class.define("qx.ui.basic.Image", {
       var contentEl = this.__getContentElement();
       if(qx.util.ResourceManager.getInstance().has(source)){
 
+        var highResolutionSource = this._findHighResolutionSource(source);
+        if(highResolutionSource){
+
+          var imageWidth = ResourceManager.getImageHeight(source);
+          var imageHeight = ResourceManager.getImageWidth(source);
+          this.setWidth(imageWidth);
+          this.setHeight(imageHeight);
+          var backgroundSize = imageWidth + "px, " + imageHeight + "px";
+          this.__currentContentElement.setStyle("background-size", backgroundSize);
+          this.setSource(highResolutionSource);
+          source = highResolutionSource;
+        };
         this.__setManagedImage(contentEl, source);
         this.__fireLoadEvent();
       } else if(qx.io.ImageLoader.isLoaded(source)){
@@ -37353,16 +37377,16 @@ qx.Class.define("qx.ui.basic.Image", {
 
       if(el.getNodeName() == "div"){
 
-        var dec = qx.theme.manager.Decoration.getInstance().resolve(this.getDecorator());
-        if(dec){
+        var decorator = qx.theme.manager.Decoration.getInstance().resolve(this.getDecorator());
+        if(decorator){
 
-          var hasGradient = (dec.getStartColor() && dec.getEndColor());
-          var hasBackground = dec.getBackgroundImage();
+          var hasGradient = (decorator.getStartColor() && decorator.getEndColor());
+          var hasBackground = decorator.getBackgroundImage();
           if(hasGradient || hasBackground){
 
             var repeat = this.getScale() ? "scale" : "no-repeat";
             var attr = qx.bom.element.Decoration.getAttributes(source, repeat);
-            var decStyle = dec.getStyles(true);
+            var decoratorStyle = decorator.getStyles(true);
             var combinedStyles = {
               "backgroundImage" : attr.style.backgroundImage,
               "backgroundPosition" : (attr.style.backgroundPosition || "0 0"),
@@ -37370,15 +37394,15 @@ qx.Class.define("qx.ui.basic.Image", {
             };
             if(hasBackground){
 
-              combinedStyles["backgroundPosition"] += "," + decStyle["background-position"] || "0 0";
-              combinedStyles["backgroundRepeat"] += ", " + dec.getBackgroundRepeat();
+              combinedStyles["backgroundPosition"] += "," + decoratorStyle["background-position"] || "0 0";
+              combinedStyles["backgroundRepeat"] += ", " + decorator.getBackgroundRepeat();
             };
             if(hasGradient){
 
               combinedStyles["backgroundPosition"] += ", 0 0";
               combinedStyles["backgroundRepeat"] += ", no-repeat";
             };
-            combinedStyles["backgroundImage"] += "," + decStyle["background-image"];
+            combinedStyles["backgroundImage"] += "," + decoratorStyle["background-image"];
             el.setStyles(combinedStyles);
             return;
           };
@@ -37388,6 +37412,51 @@ qx.Class.define("qx.ui.basic.Image", {
         };
       };
       el.setSource(source);
+    },
+    _findHighResolutionSource : function(lowResImgSrc){
+
+      var pixelRatioCandidates = ["3", "2", "1.5"];
+      var factor = parseFloat(qx.bom.client.Device.getDevicePixelRatio().toFixed(2));
+      if(factor <= 1){
+
+        return false;
+      };
+      var i = pixelRatioCandidates.length;
+      while(i > 0 && factor > pixelRatioCandidates[--i]){
+      };
+      var hiResImgSrc;
+      var k;
+      for(k = i;k >= 0;k--){
+
+        hiResImgSrc = this._getHighResolutionSource(lowResImgSrc, pixelRatioCandidates[k]);
+        if(hiResImgSrc){
+
+          return hiResImgSrc;
+        };
+      };
+      for(k = i + 1;k < pixelRatioCandidates.length;k++){
+
+        hiResImgSrc = this._getHighResolutionSource(lowResImgSrc, pixelRatioCandidates[k]);
+        if(hiResImgSrc){
+
+          return hiResImgSrc;
+        };
+      };
+      return null;
+    },
+    _getHighResolutionSource : function(source, pixelRatio){
+
+      var fileExtIndex = source.lastIndexOf('.');
+      if(fileExtIndex > -1){
+
+        var pixelRatioIdentifier = "@" + pixelRatio + "x";
+        var candidate = source.slice(0, fileExtIndex) + pixelRatioIdentifier + source.slice(fileExtIndex);
+        if(qx.util.ResourceManager.getInstance().has(candidate)){
+
+          return candidate;
+        };
+      };
+      return null;
     },
     __loaderCallback : function(source, imageInfo){
 
@@ -37426,6 +37495,13 @@ qx.Class.define("qx.ui.basic.Image", {
   },
   destruct : function(){
 
+    for(var mode in this.__contentElements){
+
+      if(this.__contentElements.hasOwnProperty(mode)){
+
+        this.__contentElements[mode].setAttribute("$$widget", null, true);
+      };
+    };
     delete this.__currentContentElement;
     if(this.__wrapper){
 
@@ -37530,7 +37606,7 @@ qx.Bootstrap.define("qx.io.ImageLoader", {
 
           entry.callbacks.push(callback, context);
         };
-        var el = new Image();
+        var el = document.createElement('img');
         var boundCallback = qx.lang.Function.listener(this.__onload, this, el, source);
         el.onload = boundCallback;
         el.onerror = boundCallback;
@@ -37558,9 +37634,21 @@ qx.Bootstrap.define("qx.io.ImageLoader", {
       };
       this.__data[source] = null;
     },
-    __onload : qx.event.GlobalError.observeMethod(function(event, element, source){
+    __onload : function(){
+
+      var callback = qx.core.Environment.select("qx.globalErrorHandling", {
+        "true" : qx.event.GlobalError.observeMethod(this.__onLoadHandler),
+        "false" : this.__onLoadHandler
+      });
+      callback.apply(this, arguments);
+    },
+    __onLoadHandler : function(event, element, source){
 
       var entry = this.__data[source];
+      if(qx.bom.client.Engine.getName() == "mshtml" && parseFloat(qx.bom.client.Engine.getVersion()) === 11){
+
+        document.body.appendChild(element);
+      };
       var isImageAvailable = function(imgElem){
 
         return (imgElem && imgElem.height !== 0);
@@ -37568,8 +37656,8 @@ qx.Bootstrap.define("qx.io.ImageLoader", {
       if(event.type === "load" && isImageAvailable(element)){
 
         entry.loaded = true;
-        entry.width = this.__getWidth(element);
-        entry.height = this.__getHeight(element);
+        entry.width = element.width;
+        entry.height = element.height;
         var result = this.__knownImageTypesRegExp.exec(source);
         if(result != null){
 
@@ -37578,6 +37666,10 @@ qx.Bootstrap.define("qx.io.ImageLoader", {
       } else {
 
         entry.failed = true;
+      };
+      if(qx.bom.client.Engine.getName() == "mshtml" && parseFloat(qx.bom.client.Engine.getVersion()) === 11){
+
+        document.body.removeChild(element);
       };
       element.onload = element.onerror = null;
       var callbacks = entry.callbacks;
@@ -37588,14 +37680,6 @@ qx.Bootstrap.define("qx.io.ImageLoader", {
 
         callbacks[i].call(callbacks[i + 1], source, entry);
       };
-    }),
-    __getWidth : function(element){
-
-      return qx.core.Environment.get("html.image.naturaldimensions") ? element.naturalWidth : element.width;
-    },
-    __getHeight : function(element){
-
-      return qx.core.Environment.get("html.image.naturaldimensions") ? element.naturalHeight : element.height;
     },
     dispose : function(){
 
@@ -38197,6 +38281,238 @@ qx.Class.define("qx.ui.core.DragDropCursor", {
         this.addState(value);
       };
     }
+  }
+});
+
+qx.Class.define("qx.ui.core.EventHandler", {
+  extend : qx.core.Object,
+  implement : qx.event.IEventHandler,
+  construct : function(){
+
+    this.base(arguments);
+    this.__manager = qx.event.Registration.getManager(window);
+  },
+  statics : {
+    PRIORITY : qx.event.Registration.PRIORITY_FIRST,
+    SUPPORTED_TYPES : {
+      mousemove : 1,
+      mouseover : 1,
+      mouseout : 1,
+      mousedown : 1,
+      mouseup : 1,
+      click : 1,
+      dblclick : 1,
+      contextmenu : 1,
+      mousewheel : 1,
+      keyup : 1,
+      keydown : 1,
+      keypress : 1,
+      keyinput : 1,
+      capture : 1,
+      losecapture : 1,
+      focusin : 1,
+      focusout : 1,
+      focus : 1,
+      blur : 1,
+      activate : 1,
+      deactivate : 1,
+      appear : 1,
+      disappear : 1,
+      dragstart : 1,
+      dragend : 1,
+      dragover : 1,
+      dragleave : 1,
+      drop : 1,
+      drag : 1,
+      dragchange : 1,
+      droprequest : 1,
+      touchstart : 1,
+      touchend : 1,
+      touchmove : 1,
+      touchcancel : 1,
+      tap : 1,
+      longtap : 1,
+      swipe : 1,
+      dbltap : 1,
+      track : 1,
+      trackend : 1,
+      trackstart : 1,
+      pinch : 1,
+      rotate : 1,
+      roll : 1,
+      pointermove : 1,
+      pointerover : 1,
+      pointerout : 1,
+      pointerdown : 1,
+      pointerup : 1,
+      pointercancel : 1
+    },
+    IGNORE_CAN_HANDLE : false
+  },
+  members : {
+    __manager : null,
+    __focusEvents : {
+      focusin : 1,
+      focusout : 1,
+      focus : 1,
+      blur : 1
+    },
+    __ignoreDisabled : {
+      mouseover : 1,
+      mouseout : 1,
+      appear : 1,
+      disappear : 1
+    },
+    canHandleEvent : function(target, type){
+
+      return target instanceof qx.ui.core.Widget;
+    },
+    _dispatchEvent : function(domEvent){
+
+      var domTarget = domEvent.getTarget();
+      var widgetTarget = qx.ui.core.Widget.getWidgetByElement(domTarget);
+      var targetChanged = false;
+      while(widgetTarget && widgetTarget.isAnonymous()){
+
+        var targetChanged = true;
+        widgetTarget = widgetTarget.getLayoutParent();
+      };
+      if(widgetTarget && targetChanged && domEvent.getType() == "activate"){
+
+        widgetTarget.getContentElement().activate();
+      };
+      if(this.__focusEvents[domEvent.getType()]){
+
+        widgetTarget = widgetTarget && widgetTarget.getFocusTarget();
+        if(!widgetTarget){
+
+          return;
+        };
+      };
+      if(domEvent.getRelatedTarget){
+
+        var domRelatedTarget = domEvent.getRelatedTarget();
+        var widgetRelatedTarget = qx.ui.core.Widget.getWidgetByElement(domRelatedTarget);
+        while(widgetRelatedTarget && widgetRelatedTarget.isAnonymous()){
+
+          widgetRelatedTarget = widgetRelatedTarget.getLayoutParent();
+        };
+        if(widgetRelatedTarget){
+
+          if(this.__focusEvents[domEvent.getType()]){
+
+            widgetRelatedTarget = widgetRelatedTarget.getFocusTarget();
+          };
+          if(widgetRelatedTarget === widgetTarget){
+
+            return;
+          };
+        };
+      };
+      var currentTarget = domEvent.getCurrentTarget();
+      var currentWidget = qx.ui.core.Widget.getWidgetByElement(currentTarget);
+      if(!currentWidget || currentWidget.isAnonymous()){
+
+        return;
+      };
+      if(this.__focusEvents[domEvent.getType()]){
+
+        currentWidget = currentWidget.getFocusTarget();
+      };
+      var type = domEvent.getType();
+      if(!currentWidget || !(currentWidget.isEnabled() || this.__ignoreDisabled[type])){
+
+        return;
+      };
+      var capture = domEvent.getEventPhase() == qx.event.type.Event.CAPTURING_PHASE;
+      var listeners = this.__manager.getListeners(currentWidget, type, capture);
+      if(domEvent.getEventPhase() == qx.event.type.Event.AT_TARGET){
+
+        if(!listeners){
+
+          listeners = [];
+        };
+        var otherListeners = this.__manager.getListeners(currentWidget, type, !capture);
+        if(otherListeners){
+
+          listeners = listeners.concat(otherListeners);
+        };
+      };
+      if(!listeners || listeners.length === 0){
+
+        return;
+      };
+      var widgetEvent = qx.event.Pool.getInstance().getObject(domEvent.constructor);
+      domEvent.clone(widgetEvent);
+      widgetEvent.setTarget(widgetTarget);
+      widgetEvent.setRelatedTarget(widgetRelatedTarget || null);
+      widgetEvent.setCurrentTarget(currentWidget);
+      var orig = domEvent.getOriginalTarget();
+      if(orig){
+
+        var widgetOriginalTarget = qx.ui.core.Widget.getWidgetByElement(orig);
+        while(widgetOriginalTarget && widgetOriginalTarget.isAnonymous()){
+
+          widgetOriginalTarget = widgetOriginalTarget.getLayoutParent();
+        };
+        widgetEvent.setOriginalTarget(widgetOriginalTarget);
+      } else {
+
+        widgetEvent.setOriginalTarget(domTarget);
+      };
+      for(var i = 0,l = listeners.length;i < l;i++){
+
+        var context = listeners[i].context || currentWidget;
+        listeners[i].handler.call(context, widgetEvent);
+      };
+      if(widgetEvent.getPropagationStopped()){
+
+        domEvent.stopPropagation();
+      };
+      if(widgetEvent.getDefaultPrevented()){
+
+        domEvent.preventDefault();
+      };
+      qx.event.Pool.getInstance().poolObject(widgetEvent);
+    },
+    registerEvent : function(target, type, capture){
+
+      var elem;
+      if(type === "focus" || type === "blur"){
+
+        elem = target.getFocusElement();
+      } else {
+
+        elem = target.getContentElement();
+      };
+      if(elem){
+
+        elem.addListener(type, this._dispatchEvent, this, capture);
+      };
+    },
+    unregisterEvent : function(target, type, capture){
+
+      var elem;
+      if(type === "focus" || type === "blur"){
+
+        elem = target.getFocusElement();
+      } else {
+
+        elem = target.getContentElement();
+      };
+      if(elem){
+
+        elem.removeListener(type, this._dispatchEvent, this, capture);
+      };
+    }
+  },
+  destruct : function(){
+
+    this.__manager = null;
+  },
+  defer : function(statics){
+
+    qx.event.Registration.addHandler(statics);
   }
 });
 
@@ -41128,7 +41444,7 @@ qx.Class.define("qx.ui.core.scroll.NativeScrollBar", {
 
         innerSize = 0;
       };
-      if(qx.core.Environment.get("engine.name") == "mshtml"){
+      if(qx.core.Environment.get("engine.name") == "mshtml" || qx.core.Environment.get("browser.name") == "edge"){
 
         var bounds = this.getBounds();
         this.getContentElement().setStyles({
@@ -42295,6 +42611,17 @@ qx.Class.define("qx.ui.core.scroll.ScrollSlider", {
     this.removeListener("roll", this._onRoll);
   },
   members : {
+    _createChildControlImpl : function(id, hash){
+
+      var control;
+      switch(id){case "knob":
+      control = this.base(arguments, id);
+      control.addListener("dblclick", function(e){
+
+        e.stopPropagation();
+      });};
+      return control || this.base(arguments, id);
+    },
     getSizeHint : function(compute){
 
       var hint = this.base(arguments);
@@ -42316,10 +42643,7 @@ qx.Mixin.define("qx.ui.core.MExecutable", {
   },
   properties : {
     command : {
-      check : function(value){
-
-        return value instanceof qx.ui.core.Command || value instanceof qx.ui.command.Command;
-      },
+      check : "qx.ui.command.Command",
       apply : "_applyCommand",
       event : "changeCommand",
       nullable : true
@@ -42353,8 +42677,11 @@ qx.Mixin.define("qx.ui.core.MExecutable", {
         this.__semaphore = false;
         return;
       };
-      this.__semaphore = true;
-      this.execute();
+      if(this.isEnabled()){
+
+        this.__semaphore = true;
+        this.execute();
+      };
     },
     _applyCommand : function(value, old){
 
@@ -42409,409 +42736,6 @@ qx.Mixin.define("qx.ui.core.MExecutable", {
 
     this._applyCommand(null, this.getCommand());
     this.__executableBindingIds = null;
-  }
-});
-
-qx.Class.define("qx.ui.command.Command", {
-  extend : qx.core.Object,
-  construct : function(shortcut){
-
-    this.base(arguments);
-    this._shortcut = new qx.bom.Shortcut(shortcut);
-    this._shortcut.addListener("execute", this.execute, this);
-    if(shortcut !== undefined){
-
-      this.setShortcut(shortcut);
-    };
-  },
-  events : {
-    "execute" : "qx.event.type.Data"
-  },
-  properties : {
-    active : {
-      init : true,
-      check : "Boolean",
-      event : "changeActive",
-      apply : "_applyActive"
-    },
-    enabled : {
-      init : true,
-      check : "Boolean",
-      event : "changeEnabled",
-      apply : "_applyEnabled"
-    },
-    shortcut : {
-      check : "String",
-      apply : "_applyShortcut",
-      nullable : true
-    },
-    label : {
-      check : "String",
-      nullable : true,
-      event : "changeLabel"
-    },
-    icon : {
-      check : "String",
-      nullable : true,
-      event : "changeIcon"
-    },
-    toolTipText : {
-      check : "String",
-      nullable : true,
-      event : "changeToolTipText"
-    },
-    value : {
-      nullable : true,
-      event : "changeValue"
-    },
-    menu : {
-      check : "qx.ui.menu.Menu",
-      nullable : true,
-      event : "changeMenu"
-    }
-  },
-  members : {
-    _shortcut : null,
-    _applyActive : function(value){
-
-      if(value === false){
-
-        this._shortcut.setEnabled(false);
-      } else {
-
-        this._shortcut.setEnabled(this.getEnabled());
-      };
-    },
-    _applyEnabled : function(value){
-
-      if(this.getActive()){
-
-        this._shortcut.setEnabled(value);
-      };
-    },
-    _applyShortcut : function(value){
-
-      this._shortcut.setShortcut(value);
-    },
-    execute : function(target){
-
-      if(this.getActive() && this.getEnabled()){
-
-        this.fireDataEvent("execute", target);
-      };
-    },
-    toString : function(){
-
-      return this._shortcut.toString();
-    }
-  },
-  destruct : function(){
-
-    this._shortcut.removeListener("execute", this.execute, this);
-    this._disposeObjects("_shortcut");
-  }
-});
-
-qx.Class.define("qx.bom.Shortcut", {
-  extend : qx.core.Object,
-  construct : function(shortcut){
-
-    this.base(arguments);
-    this.__modifier = {
-    };
-    this.__key = null;
-    if(shortcut != null){
-
-      this.setShortcut(shortcut);
-    };
-    this.initEnabled();
-  },
-  events : {
-    "execute" : "qx.event.type.Data"
-  },
-  properties : {
-    enabled : {
-      init : true,
-      check : "Boolean",
-      event : "changeEnabled",
-      apply : "_applyEnabled"
-    },
-    shortcut : {
-      check : "String",
-      apply : "_applyShortcut",
-      nullable : true
-    },
-    autoRepeat : {
-      check : "Boolean",
-      init : false
-    }
-  },
-  members : {
-    __modifier : "",
-    __key : "",
-    execute : function(target){
-
-      this.fireDataEvent("execute", target);
-    },
-    __onKeyDown : function(event){
-
-      if(this.getEnabled() && this.__matchesKeyEvent(event)){
-
-        if(!this.isAutoRepeat()){
-
-          this.execute(event.getTarget());
-        };
-        event.stop();
-      };
-    },
-    __onKeyPress : function(event){
-
-      if(this.getEnabled() && this.__matchesKeyEvent(event)){
-
-        if(this.isAutoRepeat()){
-
-          this.execute(event.getTarget());
-        };
-        event.stop();
-      };
-    },
-    _applyEnabled : function(value, old){
-
-      if(value){
-
-        qx.event.Registration.addListener(document.documentElement, "keydown", this.__onKeyDown, this);
-        qx.event.Registration.addListener(document.documentElement, "keypress", this.__onKeyPress, this);
-      } else {
-
-        qx.event.Registration.removeListener(document.documentElement, "keydown", this.__onKeyDown, this);
-        qx.event.Registration.removeListener(document.documentElement, "keypress", this.__onKeyPress, this);
-      };
-    },
-    _applyShortcut : function(value, old){
-
-      if(value){
-
-        if(value.search(/[\s]+/) != -1){
-
-          var msg = "Whitespaces are not allowed within shortcuts";
-          this.error(msg);
-          throw new Error(msg);
-        };
-        this.__modifier = {
-          "Control" : false,
-          "Shift" : false,
-          "Meta" : false,
-          "Alt" : false
-        };
-        this.__key = null;
-        var index;
-        var a = [];
-        while(value.length > 0 && index != -1){
-
-          index = value.search(/[-+]+/);
-          a.push((value.length == 1 || index == -1) ? value : value.substring(0, index));
-          value = value.substring(index + 1);
-        };
-        var al = a.length;
-        for(var i = 0;i < al;i++){
-
-          var identifier = this.__normalizeKeyIdentifier(a[i]);
-          switch(identifier){case "Control":case "Shift":case "Meta":case "Alt":
-          this.__modifier[identifier] = true;
-          break;case "Unidentified":
-          var msg = "Not a valid key name for a shortcut: " + a[i];
-          this.error(msg);
-          throw msg;default:
-          if(this.__key){
-
-            var msg = "You can only specify one non modifier key!";
-            this.error(msg);
-            throw msg;
-          };
-          this.__key = identifier;};
-        };
-      };
-      return true;
-    },
-    __matchesKeyEvent : function(e){
-
-      var key = this.__key;
-      if(!key){
-
-        return false;
-      };
-      if((!this.__modifier.Shift && e.isShiftPressed()) || (this.__modifier.Shift && !e.isShiftPressed()) || (!this.__modifier.Control && e.isCtrlPressed()) || (this.__modifier.Control && !e.isCtrlPressed()) || (!this.__modifier.Meta && e.isMetaPressed()) || (this.__modifier.Meta && !e.isMetaPressed()) || (!this.__modifier.Alt && e.isAltPressed()) || (this.__modifier.Alt && !e.isAltPressed())){
-
-        return false;
-      };
-      if(key == e.getKeyIdentifier()){
-
-        return true;
-      };
-      return false;
-    },
-    __oldKeyNameToKeyIdentifierMap : {
-      esc : "Escape",
-      ctrl : "Control",
-      print : "PrintScreen",
-      del : "Delete",
-      pageup : "PageUp",
-      pagedown : "PageDown",
-      numlock : "NumLock",
-      numpad_0 : "0",
-      numpad_1 : "1",
-      numpad_2 : "2",
-      numpad_3 : "3",
-      numpad_4 : "4",
-      numpad_5 : "5",
-      numpad_6 : "6",
-      numpad_7 : "7",
-      numpad_8 : "8",
-      numpad_9 : "9",
-      numpad_divide : "/",
-      numpad_multiply : "*",
-      numpad_minus : "-",
-      numpad_plus : "+"
-    },
-    __normalizeKeyIdentifier : function(keyName){
-
-      var kbUtil = qx.event.util.Keyboard;
-      var keyIdentifier = "Unidentified";
-      if(kbUtil.isValidKeyIdentifier(keyName)){
-
-        return keyName;
-      };
-      if(keyName.length == 1 && keyName >= "a" && keyName <= "z"){
-
-        return keyName.toUpperCase();
-      };
-      keyName = keyName.toLowerCase();
-      var keyIdentifier = this.__oldKeyNameToKeyIdentifierMap[keyName] || qx.lang.String.firstUp(keyName);
-      if(kbUtil.isValidKeyIdentifier(keyIdentifier)){
-
-        return keyIdentifier;
-      } else {
-
-        return "Unidentified";
-      };
-    },
-    toString : function(){
-
-      var key = this.__key;
-      var str = [];
-      for(var modifier in this.__modifier){
-
-        if(this.__modifier[modifier]){
-
-          str.push(qx.locale.Key.getKeyName("short", modifier));
-        };
-      };
-      if(key){
-
-        str.push(qx.locale.Key.getKeyName("short", key));
-      };
-      return str.join("+");
-    }
-  },
-  destruct : function(){
-
-    this.setEnabled(false);
-    this.__modifier = this.__key = null;
-  }
-});
-
-qx.Class.define("qx.locale.Key", {
-  statics : {
-    getKeyName : function(size, keyIdentifier, locale){
-
-      if(qx.core.Environment.get("qx.debug")){
-
-        qx.core.Assert.assertInArray(size, ["short", "full"]);
-      };
-      var key = "key_" + size + "_" + keyIdentifier;
-      if(qx.core.Environment.get("os.name") == "osx" && keyIdentifier == "Control"){
-
-        key += "_Mac";
-      };
-      var localizedKey = qx.locale.Manager.getInstance().translate(key, [], locale);
-      if(localizedKey == key){
-
-        return qx.locale.Key._keyNames[key] || keyIdentifier;
-      } else {
-
-        return localizedKey;
-      };
-    }
-  },
-  defer : function(statics){
-
-    var keyNames = {
-    };
-    var Manager = qx.locale.Manager;
-    keyNames[Manager.marktr("key_short_Backspace")] = "Backspace";
-    keyNames[Manager.marktr("key_short_Tab")] = "Tab";
-    keyNames[Manager.marktr("key_short_Space")] = "Space";
-    keyNames[Manager.marktr("key_short_Enter")] = "Enter";
-    keyNames[Manager.marktr("key_short_Shift")] = "Shift";
-    keyNames[Manager.marktr("key_short_Control")] = "Ctrl";
-    keyNames[Manager.marktr("key_short_Control_Mac")] = "Ctrl";
-    keyNames[Manager.marktr("key_short_Alt")] = "Alt";
-    keyNames[Manager.marktr("key_short_CapsLock")] = "Caps";
-    keyNames[Manager.marktr("key_short_Meta")] = "Meta";
-    keyNames[Manager.marktr("key_short_Escape")] = "Esc";
-    keyNames[Manager.marktr("key_short_Left")] = "Left";
-    keyNames[Manager.marktr("key_short_Up")] = "Up";
-    keyNames[Manager.marktr("key_short_Right")] = "Right";
-    keyNames[Manager.marktr("key_short_Down")] = "Down";
-    keyNames[Manager.marktr("key_short_PageUp")] = "PgUp";
-    keyNames[Manager.marktr("key_short_PageDown")] = "PgDn";
-    keyNames[Manager.marktr("key_short_End")] = "End";
-    keyNames[Manager.marktr("key_short_Home")] = "Home";
-    keyNames[Manager.marktr("key_short_Insert")] = "Ins";
-    keyNames[Manager.marktr("key_short_Delete")] = "Del";
-    keyNames[Manager.marktr("key_short_NumLock")] = "Num";
-    keyNames[Manager.marktr("key_short_PrintScreen")] = "Print";
-    keyNames[Manager.marktr("key_short_Scroll")] = "Scroll";
-    keyNames[Manager.marktr("key_short_Pause")] = "Pause";
-    keyNames[Manager.marktr("key_short_Win")] = "Win";
-    keyNames[Manager.marktr("key_short_Apps")] = "Apps";
-    keyNames[Manager.marktr("key_full_Backspace")] = "Backspace";
-    keyNames[Manager.marktr("key_full_Tab")] = "Tabulator";
-    keyNames[Manager.marktr("key_full_Space")] = "Space";
-    keyNames[Manager.marktr("key_full_Enter")] = "Enter";
-    keyNames[Manager.marktr("key_full_Shift")] = "Shift";
-    keyNames[Manager.marktr("key_full_Control")] = "Control";
-    keyNames[Manager.marktr("key_full_Control_Mac")] = "Control";
-    keyNames[Manager.marktr("key_full_Alt")] = "Alt";
-    keyNames[Manager.marktr("key_full_CapsLock")] = "CapsLock";
-    keyNames[Manager.marktr("key_full_Meta")] = "Meta";
-    keyNames[Manager.marktr("key_full_Escape")] = "Escape";
-    keyNames[Manager.marktr("key_full_Left")] = "Left";
-    keyNames[Manager.marktr("key_full_Up")] = "Up";
-    keyNames[Manager.marktr("key_full_Right")] = "Right";
-    keyNames[Manager.marktr("key_full_Down")] = "Down";
-    keyNames[Manager.marktr("key_full_PageUp")] = "PageUp";
-    keyNames[Manager.marktr("key_full_PageDown")] = "PageDown";
-    keyNames[Manager.marktr("key_full_End")] = "End";
-    keyNames[Manager.marktr("key_full_Home")] = "Home";
-    keyNames[Manager.marktr("key_full_Insert")] = "Insert";
-    keyNames[Manager.marktr("key_full_Delete")] = "Delete";
-    keyNames[Manager.marktr("key_full_NumLock")] = "NumLock";
-    keyNames[Manager.marktr("key_full_PrintScreen")] = "PrintScreen";
-    keyNames[Manager.marktr("key_full_Scroll")] = "Scroll";
-    keyNames[Manager.marktr("key_full_Pause")] = "Pause";
-    keyNames[Manager.marktr("key_full_Win")] = "Win";
-    keyNames[Manager.marktr("key_full_Apps")] = "Apps";
-    statics._keyNames = keyNames;
-  }
-});
-
-qx.Class.define("qx.ui.core.Command", {
-  extend : qx.ui.command.Command,
-  construct : function(shortcut){
-
-    qx.log.Logger.deprecatedMethodWarning(arguments.callee, "Please use qx.ui.command.Command instead.");
-    this.base(arguments, shortcut);
   }
 });
 
@@ -43023,7 +42947,10 @@ qx.Class.define("qx.ui.form.Button", {
     this.addListener("tap", this._onTap);
     this.addListener("keydown", this._onKeyDown);
     this.addListener("keyup", this._onKeyUp);
-    this.addListener("dbltap", this._onStopEvent);
+    this.addListener("dblclick", function(e){
+
+      e.stopPropagation();
+    });
   },
   properties : {
     appearance : {
@@ -47035,15 +46962,6 @@ qx.Class.define("qx.ui.menu.Menu", {
           this.setHeight(menuBounds.height + top);
           this.moveTo(left, 0);
         });
-      } else if(top === 0){
-
-        var target = this._placementTarget;
-        var height = target.top || target.getBounds().top;
-        this._assertSlideBar(function(){
-
-          this.setHeight(height);
-        });
-        this.moveTo(left, 0);
       } else if(top + menuBounds.height > rootHeight){
 
         this._assertSlideBar(function(){
@@ -47053,7 +46971,7 @@ qx.Class.define("qx.ui.menu.Menu", {
       } else {
 
         this.setHeight(null);
-      };;
+      };
     },
     _assertSlideBar : function(callback){
 
@@ -51816,6 +51734,196 @@ qx.Class.define("qx.io.remote.transport.Abstract", {
   }
 });
 
+qx.Class.define("qx.io.remote.transport.Script", {
+  extend : qx.io.remote.transport.Abstract,
+  construct : function(){
+
+    this.base(arguments);
+    var vUniqueId = ++qx.io.remote.transport.Script.__uniqueId;
+    if(vUniqueId >= 2000000000){
+
+      qx.io.remote.transport.Script.__uniqueId = vUniqueId = 1;
+    };
+    this.__element = null;
+    this.__uniqueId = vUniqueId;
+  },
+  statics : {
+    __uniqueId : 0,
+    _instanceRegistry : {
+    },
+    ScriptTransport_PREFIX : "_ScriptTransport_",
+    ScriptTransport_ID_PARAM : "_ScriptTransport_id",
+    ScriptTransport_DATA_PARAM : "_ScriptTransport_data",
+    handles : {
+      synchronous : false,
+      asynchronous : true,
+      crossDomain : true,
+      fileUpload : false,
+      programaticFormFields : false,
+      responseTypes : ["text/plain", "text/javascript", "application/json"]
+    },
+    isSupported : function(){
+
+      return true;
+    },
+    _numericMap : {
+      "uninitialized" : 1,
+      "loading" : 2,
+      "loaded" : 2,
+      "interactive" : 3,
+      "complete" : 4
+    },
+    _requestFinished : qx.event.GlobalError.observeMethod(function(id, content){
+
+      var vInstance = qx.io.remote.transport.Script._instanceRegistry[id];
+      if(vInstance == null){
+
+        if(qx.core.Environment.get("qx.debug")){
+
+          if(qx.core.Environment.get("qx.debug.io.remote")){
+
+            this.warn("Request finished for an unknown instance (probably aborted or timed out before)");
+          };
+        };
+      } else {
+
+        vInstance._responseContent = content;
+        vInstance._switchReadyState(qx.io.remote.transport.Script._numericMap.complete);
+      };
+    })
+  },
+  members : {
+    __lastReadyState : 0,
+    __element : null,
+    __uniqueId : null,
+    send : function(){
+
+      var vUrl = this.getUrl();
+      vUrl += (vUrl.indexOf("?") >= 0 ? "&" : "?") + qx.io.remote.transport.Script.ScriptTransport_ID_PARAM + "=" + this.__uniqueId;
+      var vParameters = this.getParameters();
+      var vParametersList = [];
+      for(var vId in vParameters){
+
+        if(vId.indexOf(qx.io.remote.transport.Script.ScriptTransport_PREFIX) == 0){
+
+          this.error("Illegal parameter name. The following prefix is used internally by qooxdoo): " + qx.io.remote.transport.Script.ScriptTransport_PREFIX);
+        };
+        var value = vParameters[vId];
+        if(value instanceof Array){
+
+          for(var i = 0;i < value.length;i++){
+
+            vParametersList.push(encodeURIComponent(vId) + "=" + encodeURIComponent(value[i]));
+          };
+        } else {
+
+          vParametersList.push(encodeURIComponent(vId) + "=" + encodeURIComponent(value));
+        };
+      };
+      if(vParametersList.length > 0){
+
+        vUrl += "&" + vParametersList.join("&");
+      };
+      var vData = this.getData();
+      if(vData != null){
+
+        vUrl += "&" + qx.io.remote.transport.Script.ScriptTransport_DATA_PARAM + "=" + encodeURIComponent(vData);
+      };
+      qx.io.remote.transport.Script._instanceRegistry[this.__uniqueId] = this;
+      this.__element = document.createElement("script");
+      this.__element.charset = "utf-8";
+      this.__element.src = vUrl;
+      if(qx.core.Environment.get("qx.debug")){
+
+        if(qx.core.Environment.get("qx.debug.io.remote.data")){
+
+          this.debug("Request: " + vUrl);
+        };
+      };
+      document.body.appendChild(this.__element);
+    },
+    _switchReadyState : function(vReadyState){
+
+      switch(this.getState()){case "completed":case "aborted":case "failed":case "timeout":
+      this.warn("Ignore Ready State Change");
+      return;};
+      while(this.__lastReadyState < vReadyState){
+
+        this.setState(qx.io.remote.Exchange._nativeMap[++this.__lastReadyState]);
+      };
+    },
+    setRequestHeader : function(vLabel, vValue){
+    },
+    getResponseHeader : function(vLabel){
+
+      return null;
+    },
+    getResponseHeaders : function(){
+
+      return {
+      };
+    },
+    getStatusCode : function(){
+
+      return 200;
+    },
+    getStatusText : function(){
+
+      return "";
+    },
+    getFetchedLength : function(){
+
+      return 0;
+    },
+    getResponseContent : function(){
+
+      if(this.getState() !== "completed"){
+
+        if(qx.core.Environment.get("qx.debug")){
+
+          if(qx.core.Environment.get("qx.debug.io.remote")){
+
+            this.warn("Transfer not complete, ignoring content!");
+          };
+        };
+        return null;
+      };
+      if(qx.core.Environment.get("qx.debug")){
+
+        if(qx.core.Environment.get("qx.debug.io.remote")){
+
+          this.debug("Returning content for responseType: " + this.getResponseType());
+        };
+      };
+      switch(this.getResponseType()){case "text/plain":case "application/json":case "text/javascript":
+      if(qx.core.Environment.get("qx.debug")){
+
+        if(qx.core.Environment.get("qx.debug.io.remote.data")){
+
+          this.debug("Response: " + this._responseContent);
+        };
+      };
+      var ret = this._responseContent;
+      return (ret === 0 ? 0 : (ret || null));default:
+      this.warn("No valid responseType specified (" + this.getResponseType() + ")!");
+      return null;};
+    }
+  },
+  defer : function(){
+
+    qx.io.remote.Exchange.registerType(qx.io.remote.transport.Script, "qx.io.remote.transport.Script");
+  },
+  destruct : function(){
+
+    if(this.__element){
+
+      delete qx.io.remote.transport.Script._instanceRegistry[this.__uniqueId];
+      document.body.removeChild(this.__element);
+    };
+    this.__element = this._responseContent = null;
+  }
+});
+
 qx.Class.define("qx.io.remote.transport.Iframe", {
   extend : qx.io.remote.transport.Abstract,
   construct : function(){
@@ -52291,196 +52399,6 @@ qx.Class.define("qx.bom.Iframe", {
       };
       qx.bom.Event.addNativeListener(iframe, "load", callback);
     }
-  }
-});
-
-qx.Class.define("qx.io.remote.transport.Script", {
-  extend : qx.io.remote.transport.Abstract,
-  construct : function(){
-
-    this.base(arguments);
-    var vUniqueId = ++qx.io.remote.transport.Script.__uniqueId;
-    if(vUniqueId >= 2000000000){
-
-      qx.io.remote.transport.Script.__uniqueId = vUniqueId = 1;
-    };
-    this.__element = null;
-    this.__uniqueId = vUniqueId;
-  },
-  statics : {
-    __uniqueId : 0,
-    _instanceRegistry : {
-    },
-    ScriptTransport_PREFIX : "_ScriptTransport_",
-    ScriptTransport_ID_PARAM : "_ScriptTransport_id",
-    ScriptTransport_DATA_PARAM : "_ScriptTransport_data",
-    handles : {
-      synchronous : false,
-      asynchronous : true,
-      crossDomain : true,
-      fileUpload : false,
-      programaticFormFields : false,
-      responseTypes : ["text/plain", "text/javascript", "application/json"]
-    },
-    isSupported : function(){
-
-      return true;
-    },
-    _numericMap : {
-      "uninitialized" : 1,
-      "loading" : 2,
-      "loaded" : 2,
-      "interactive" : 3,
-      "complete" : 4
-    },
-    _requestFinished : qx.event.GlobalError.observeMethod(function(id, content){
-
-      var vInstance = qx.io.remote.transport.Script._instanceRegistry[id];
-      if(vInstance == null){
-
-        if(qx.core.Environment.get("qx.debug")){
-
-          if(qx.core.Environment.get("qx.debug.io.remote")){
-
-            this.warn("Request finished for an unknown instance (probably aborted or timed out before)");
-          };
-        };
-      } else {
-
-        vInstance._responseContent = content;
-        vInstance._switchReadyState(qx.io.remote.transport.Script._numericMap.complete);
-      };
-    })
-  },
-  members : {
-    __lastReadyState : 0,
-    __element : null,
-    __uniqueId : null,
-    send : function(){
-
-      var vUrl = this.getUrl();
-      vUrl += (vUrl.indexOf("?") >= 0 ? "&" : "?") + qx.io.remote.transport.Script.ScriptTransport_ID_PARAM + "=" + this.__uniqueId;
-      var vParameters = this.getParameters();
-      var vParametersList = [];
-      for(var vId in vParameters){
-
-        if(vId.indexOf(qx.io.remote.transport.Script.ScriptTransport_PREFIX) == 0){
-
-          this.error("Illegal parameter name. The following prefix is used internally by qooxdoo): " + qx.io.remote.transport.Script.ScriptTransport_PREFIX);
-        };
-        var value = vParameters[vId];
-        if(value instanceof Array){
-
-          for(var i = 0;i < value.length;i++){
-
-            vParametersList.push(encodeURIComponent(vId) + "=" + encodeURIComponent(value[i]));
-          };
-        } else {
-
-          vParametersList.push(encodeURIComponent(vId) + "=" + encodeURIComponent(value));
-        };
-      };
-      if(vParametersList.length > 0){
-
-        vUrl += "&" + vParametersList.join("&");
-      };
-      var vData = this.getData();
-      if(vData != null){
-
-        vUrl += "&" + qx.io.remote.transport.Script.ScriptTransport_DATA_PARAM + "=" + encodeURIComponent(vData);
-      };
-      qx.io.remote.transport.Script._instanceRegistry[this.__uniqueId] = this;
-      this.__element = document.createElement("script");
-      this.__element.charset = "utf-8";
-      this.__element.src = vUrl;
-      if(qx.core.Environment.get("qx.debug")){
-
-        if(qx.core.Environment.get("qx.debug.io.remote.data")){
-
-          this.debug("Request: " + vUrl);
-        };
-      };
-      document.body.appendChild(this.__element);
-    },
-    _switchReadyState : function(vReadyState){
-
-      switch(this.getState()){case "completed":case "aborted":case "failed":case "timeout":
-      this.warn("Ignore Ready State Change");
-      return;};
-      while(this.__lastReadyState < vReadyState){
-
-        this.setState(qx.io.remote.Exchange._nativeMap[++this.__lastReadyState]);
-      };
-    },
-    setRequestHeader : function(vLabel, vValue){
-    },
-    getResponseHeader : function(vLabel){
-
-      return null;
-    },
-    getResponseHeaders : function(){
-
-      return {
-      };
-    },
-    getStatusCode : function(){
-
-      return 200;
-    },
-    getStatusText : function(){
-
-      return "";
-    },
-    getFetchedLength : function(){
-
-      return 0;
-    },
-    getResponseContent : function(){
-
-      if(this.getState() !== "completed"){
-
-        if(qx.core.Environment.get("qx.debug")){
-
-          if(qx.core.Environment.get("qx.debug.io.remote")){
-
-            this.warn("Transfer not complete, ignoring content!");
-          };
-        };
-        return null;
-      };
-      if(qx.core.Environment.get("qx.debug")){
-
-        if(qx.core.Environment.get("qx.debug.io.remote")){
-
-          this.debug("Returning content for responseType: " + this.getResponseType());
-        };
-      };
-      switch(this.getResponseType()){case "text/plain":case "application/json":case "text/javascript":
-      if(qx.core.Environment.get("qx.debug")){
-
-        if(qx.core.Environment.get("qx.debug.io.remote.data")){
-
-          this.debug("Response: " + this._responseContent);
-        };
-      };
-      var ret = this._responseContent;
-      return (ret === 0 ? 0 : (ret || null));default:
-      this.warn("No valid responseType specified (" + this.getResponseType() + ")!");
-      return null;};
-    }
-  },
-  defer : function(){
-
-    qx.io.remote.Exchange.registerType(qx.io.remote.transport.Script, "qx.io.remote.transport.Script");
-  },
-  destruct : function(){
-
-    if(this.__element){
-
-      delete qx.io.remote.transport.Script._instanceRegistry[this.__uniqueId];
-      document.body.removeChild(this.__element);
-    };
-    this.__element = this._responseContent = null;
   }
 });
 
@@ -53521,7 +53439,7 @@ qx.Class.define("qx.util.format.NumberFormat", {
 
         if(qx.lang.Type.isString(locale)){
 
-          this.__locale = locale;
+          this.setLocale(locale);
         } else {
 
           throw new Error("Wrong argument type. String is expected.");
@@ -53529,6 +53447,14 @@ qx.Class.define("qx.util.format.NumberFormat", {
       } else {
 
         throw new Error("Wrong number of arguments.");
+      };
+    };
+    if(!locale){
+
+      this.setLocale(qx.locale.Manager.getInstance().getLocale());
+      if(qx.core.Environment.get("qx.dynlocale")){
+
+        qx.locale.Manager.getInstance().bind("locale", this, "locale");
       };
     };
   },
@@ -53562,16 +53488,23 @@ qx.Class.define("qx.util.format.NumberFormat", {
       check : "String",
       init : "",
       event : "changeNumberFormat"
+    },
+    locale : {
+      check : "String",
+      init : null,
+      event : "changeLocale"
     }
   },
   members : {
-    __locale : null,
     format : function(num){
 
+      if(isNaN(num)){
+
+        return "NaN";
+      };
       switch(num){case Infinity:
       return "Infinity";case -Infinity:
-      return "-Infinity";case NaN:
-      return "NaN";};
+      return "-Infinity";};
       var negative = (num < 0);
       if(negative){
 
@@ -53609,7 +53542,7 @@ qx.Class.define("qx.util.format.NumberFormat", {
         var groupPos;
         for(groupPos = origIntegerStr.length;groupPos > 3;groupPos -= 3){
 
-          integerStr = "" + qx.locale.Number.getGroupSeparator(this.__locale) + origIntegerStr.substring(groupPos - 3, groupPos) + integerStr;
+          integerStr = "" + qx.locale.Number.getGroupSeparator(this.getLocale()) + origIntegerStr.substring(groupPos - 3, groupPos) + integerStr;
         };
         integerStr = origIntegerStr.substring(0, groupPos) + integerStr;
       };
@@ -53618,24 +53551,24 @@ qx.Class.define("qx.util.format.NumberFormat", {
       var str = prefix + (negative ? "-" : "") + integerStr;
       if(fractionStr.length > 0){
 
-        str += "" + qx.locale.Number.getDecimalSeparator(this.__locale) + fractionStr;
+        str += "" + qx.locale.Number.getDecimalSeparator(this.getLocale()) + fractionStr;
       };
       str += postfix;
       return str;
     },
     parse : function(str){
 
-      var groupSepEsc = qx.lang.String.escapeRegexpChars(qx.locale.Number.getGroupSeparator(this.__locale) + "");
-      var decimalSepEsc = qx.lang.String.escapeRegexpChars(qx.locale.Number.getDecimalSeparator(this.__locale) + "");
-      var regex = new RegExp("^" + qx.lang.String.escapeRegexpChars(this.getPrefix()) + '([-+]){0,1}' + '([0-9]{1,3}(?:' + groupSepEsc + '{0,1}[0-9]{3}){0,}){0,1}' + '(' + decimalSepEsc + '\\d+){0,1}' + qx.lang.String.escapeRegexpChars(this.getPostfix()) + "$");
+      var groupSepEsc = qx.lang.String.escapeRegexpChars(qx.locale.Number.getGroupSeparator(this.getLocale()) + "");
+      var decimalSepEsc = qx.lang.String.escapeRegexpChars(qx.locale.Number.getDecimalSeparator(this.getLocale()) + "");
+      var regex = new RegExp("^(" + qx.lang.String.escapeRegexpChars(this.getPrefix()) + ')?([-+]){0,1}' + '([0-9]{1,3}(?:' + groupSepEsc + '{0,1}[0-9]{3}){0,}){0,1}' + '(' + decimalSepEsc + '\\d+){0,1}(' + qx.lang.String.escapeRegexpChars(this.getPostfix()) + ")?$");
       var hit = regex.exec(str);
       if(hit == null){
 
         throw new Error("Number string '" + str + "' does not match the number format");
       };
-      var negative = (hit[1] == "-");
-      var integerStr = hit[2] || "0";
-      var fractionStr = hit[3];
+      var negative = (hit[2] == "-");
+      var integerStr = hit[3] || "0";
+      var fractionStr = hit[4];
       integerStr = integerStr.replace(new RegExp(groupSepEsc, "g"), "");
       var asStr = (negative ? "-" : "") + integerStr;
       if(fractionStr != null && fractionStr.length != 0){
@@ -53645,6 +53578,13 @@ qx.Class.define("qx.util.format.NumberFormat", {
       };
       return parseFloat(asStr);
     }
+  },
+  destruct : function(){
+
+    if(qx.core.Environment.get("qx.dynlocale")){
+
+      qx.locale.Manager.getInstance().removeRelatedBindings(this);
+    };
   }
 });
 
@@ -53764,10 +53704,12 @@ qx.Class.define("qx.ui.form.AbstractField", {
     __stylesheet : null,
     __addPlaceholderRules : function(){
 
+      var engine = qx.core.Environment.get("engine.name");
+      var browser = qx.core.Environment.get("browser.name");
       var colorManager = qx.theme.manager.Color.getInstance();
       var color = colorManager.resolve("text-placeholder");
       var selector;
-      if(qx.core.Environment.get("engine.name") == "gecko"){
+      if(engine == "gecko"){
 
         if(parseFloat(qx.core.Environment.get("engine.version")) >= 19){
 
@@ -53777,13 +53719,14 @@ qx.Class.define("qx.ui.form.AbstractField", {
           selector = "input:-moz-placeholder, textarea:-moz-placeholder";
         };
         qx.ui.style.Stylesheet.getInstance().addRule(selector, "color: " + color + " !important");
-      } else if(qx.core.Environment.get("engine.name") == "webkit"){
+      } else if(engine == "webkit" && browser != "edge"){
 
         selector = "input.qx-placeholder-color::-webkit-input-placeholder, textarea.qx-placeholder-color::-webkit-input-placeholder";
         qx.ui.style.Stylesheet.getInstance().addRule(selector, "color: " + color);
-      } else if(qx.core.Environment.get("engine.name") == "mshtml"){
+      } else if(engine == "mshtml" || browser == "edge"){
 
-        selector = "input.qx-placeholder-color:-ms-input-placeholder, textarea.qx-placeholder-color:-ms-input-placeholder";
+        var separator = browser == "edge" ? "::" : ":";
+        selector = ["input.qx-placeholder-color", "-ms-input-placeholder, textarea.qx-placeholder-color", "-ms-input-placeholder"].join(separator);
         qx.ui.style.Stylesheet.getInstance().addRule(selector, "color: " + color + " !important");
       };;
     }
@@ -54309,6 +54252,14 @@ qx.Class.define("qx.ui.form.AbstractField", {
         if(this.getEnabled()){
 
           this.getContentElement().setAttribute("placeholder", value);
+          if(qx.core.Environment.get("browser.name") === "firefox" && parseFloat(qx.core.Environment.get("browser.version")) < 36 && this.getContentElement().getNodeName() === "textarea" && !this.getContentElement().getDomElement()){
+
+            this.addListenerOnce("appear", function(){
+
+              this.getContentElement().getDomElement().removeAttribute("placeholder");
+              this.getContentElement().getDomElement().setAttribute("placeholder", value);
+            }, this);
+          };
         };
       };
     },
@@ -55993,23 +55944,12 @@ qx.Bootstrap.define("qx.module.util.String", {
   },
   defer : function(statics){
 
-    qxWeb.$attachStatic({
-      string : {
-        camelCase : statics.camelCase,
-        hyphenate : statics.hyphenate,
-        firstUp : statics.firstUp,
-        firstLow : statics.firstLow,
-        startsWith : statics.startsWith,
-        endsWith : statics.endsWith,
-        escapeRegexpChars : statics.escapeRegexpChars,
-        escapeHtml : statics.escapeHtml
-      }
-    });
+    qxWeb.$attachAll(this, "string");
   }
 });
 
 qx.Bootstrap.define("qx.module.Dataset", {
-  statics : {
+  members : {
     setData : function(name, value){
 
       this._forEachElement(function(item){
@@ -56040,22 +55980,16 @@ qx.Bootstrap.define("qx.module.Dataset", {
     },
     removeData : function(name){
 
-      if(this[0] && this[0].nodeType === 1){
+      this._forEachElement(function(item){
 
-        qx.bom.element.Dataset.remove(this[0], name);
-      };
+        qx.bom.element.Dataset.remove(item, name);
+      });
       return this;
     }
   },
   defer : function(statics){
 
-    qxWeb.$attach({
-      "getData" : statics.getData,
-      "setData" : statics.setData,
-      "removeData" : statics.removeData,
-      "getAllData" : statics.getAllData,
-      "hasData" : statics.hasData
-    });
+    qxWeb.$attachAll(this);
   }
 });
 
@@ -56075,11 +56009,13 @@ qx.Bootstrap.define("qx.bom.element.Dataset", {
         };
       } else {
 
-        if(value === undefined){
+        if((value === null) || (value == undefined)){
 
-          value = null;
+          qx.bom.element.Attribute.reset(element, "data-" + qx.lang.String.hyphenate(name));
+        } else {
+
+          qx.bom.element.Attribute.set(element, "data-" + qx.lang.String.hyphenate(name), value);
         };
-        qx.bom.element.Attribute.set(element, "data-" + qx.lang.String.hyphenate(name), value);
       };
     },
     get : function(element, name){
@@ -56190,37 +56126,13 @@ qx.Bootstrap.define("qx.ui.website.Widget", {
   statics : {
     widget : function(){
 
-      var widgets = new qx.ui.website.Widget(this);
-      widgets.init();
-      return widgets;
+      var widget = new qx.ui.website.Widget(this);
+      widget.init();
+      return widget;
     },
     create : function(html){
 
       return new qx.ui.website.Widget(qxWeb.create(html));
-    },
-    $onFirstCollection : function(type, listener, ctx, useCapture){
-
-      var propertyName = this.classname.replace(/\./g, "-") + "-context";
-      if(!this.getProperty(propertyName)){
-
-        this.setProperty(propertyName, ctx);
-      };
-      var originalCtx = this.getProperty(propertyName);
-      if(!this.hasListener(type, listener, originalCtx)){
-
-        this.on(type, listener, originalCtx, useCapture);
-      };
-      return this;
-    },
-    $offFirstCollection : function(type, listener, ctx, useCapture){
-
-      var propertyName = this.classname.replace(/\./g, "-") + "-context";
-      this._forEachElementWrapped(function(item){
-
-        var originalCtx = item.getProperty(propertyName);
-        item.off(type, listener, originalCtx, useCapture);
-      });
-      return this;
     },
     initWidgets : function(selector){
 
@@ -56233,11 +56145,25 @@ qx.Bootstrap.define("qx.ui.website.Widget", {
 
         widget.init();
       });
+    },
+    toWidgetCollection : function(){
+
+      var args = this.toArray().map(function(el){
+
+        return qxWeb(el);
+      });
+      Array.prototype.unshift.call(args, null);
+      var Temp = qx.core.Wrapper.bind.apply(qx.core.Wrapper, args);
+      return new Temp();
     }
   },
   construct : function(selector, context){
 
     var col = this.base(arguments, selector, context);
+    if(col.length > 1){
+
+      throw new Error("The collection must not contain more than one element.");
+    };
     Array.prototype.push.apply(this, Array.prototype.slice.call(col, 0, col.length));
   },
   members : {
@@ -56252,6 +56178,7 @@ qx.Bootstrap.define("qx.ui.website.Widget", {
       this.addClass("qx-widget");
       this.addClass(this.getCssPrefix());
       this.setProperty("$$qx-widget-initialized", true);
+      this[0].$widget = this;
       return true;
     },
     getCssPrefix : function(){
@@ -56283,15 +56210,12 @@ qx.Bootstrap.define("qx.ui.website.Widget", {
     },
     _setData : function(type, name, data){
 
-      this.forEach(function(item){
+      if(!this["$$storage_" + type]){
 
-        if(!item[type]){
-
-          item[type] = {
-          };
+        this["$$storage_" + type] = {
         };
-        item[type][name] = data;
-      });
+      };
+      this["$$storage_" + type][name] = data;
       return this;
     },
     getTemplate : function(name){
@@ -56304,7 +56228,7 @@ qx.Bootstrap.define("qx.ui.website.Widget", {
     },
     _getData : function(type, name){
 
-      var storage = this.getProperty(type);
+      var storage = this["$$storage_" + type];
       var item;
       if(storage){
 
@@ -56348,19 +56272,76 @@ qx.Bootstrap.define("qx.ui.website.Widget", {
 
         this.allOff(name);
       };
+      this[0].$widget = null;
       return qxWeb.$init(this, qxWeb);
     }
   },
   defer : function(statics){
 
     qxWeb.$attach({
-      $onFirstCollection : statics.$onFirstCollection,
-      $offFirstCollection : statics.$offFirstCollection,
-      widget : statics.widget
+      widget : statics.widget,
+      toWidgetCollection : statics.toWidgetCollection
     });
     qxWeb.$attachStatic({
       initWidgets : statics.initWidgets
     });
+  }
+});
+
+qx.Bootstrap.define("qx.core.Wrapper", {
+  extend : Array,
+  construct : function(){
+
+    for(var i = 0,l = arguments.length;i < l;i++){
+
+      this.push(arguments[i]);
+    };
+    var firstItem = arguments[0];
+    for(var name in firstItem){
+
+      if(this[name] !== undefined){
+
+        continue;
+      };
+      if(firstItem[name] instanceof Function){
+
+        this[name] = function(name){
+
+          var firstReturnValue;
+          var args = Array.prototype.slice.call(arguments, 0);
+          args.shift();
+          this.forEach(function(item){
+
+            var returnValue = item[name].apply(item, args);
+            if(firstReturnValue === undefined){
+
+              firstReturnValue = returnValue;
+            };
+          });
+          if(firstReturnValue === this[0]){
+
+            return this;
+          };
+          return firstReturnValue;
+        }.bind(this, name);
+      } else {
+
+        Object.defineProperty(this, name, {
+          enumerable : true,
+          get : function(name){
+
+            return this[name];
+          }.bind(firstItem, name),
+          set : function(name, value){
+
+            this.forEach(function(item){
+
+              item[name] = value;
+            });
+          }.bind(this, name)
+        });
+      };
+    };
   }
 });
 
@@ -58143,6 +58124,8 @@ qx.Class.define("qx.ui.table.Table", {
       var data = evt.getData();
       this._updateTableData(data.firstRow, data.lastRow, data.firstColumn, data.lastColumn, data.removeStart, data.removeCount);
     },
+    _onContextMenuOpen : function(e){
+    },
     _updateTableData : function(firstRow, lastRow, firstColumn, lastColumn, removeStart, removeCount){
 
       var scrollerArr = this._getPaneScrollerArr();
@@ -59025,7 +59008,6 @@ qx.Class.define("qx.ui.table.columnmenu.MenuItem", {
     });
   },
   members : {
-    __bInListener : false,
     _applyVisible : function(value, old){
 
       if(!this.bInListener){
@@ -59675,8 +59657,15 @@ qx.Class.define("qx.ui.table.pane.Scroller", {
     this._paneClipper.addListener("pointermove", this._onPointermovePane, this);
     this._paneClipper.addListener("pointerdown", this._onPointerdownPane, this);
     this._paneClipper.addListener("tap", this._onTapPane, this);
+    this._paneClipper.addListener("contextmenu", this._onTapPane, this);
     this._paneClipper.addListener("contextmenu", this._onContextMenu, this);
-    this._paneClipper.addListener("dbltap", this._onDbltapPane, this);
+    if(qx.core.Environment.get("device.type") === "desktop"){
+
+      this._paneClipper.addListener("dblclick", this._onDbltapPane, this);
+    } else {
+
+      this._paneClipper.addListener("dbltap", this._onDbltapPane, this);
+    };
     this._paneClipper.addListener("resize", this._onResizePane, this);
     if(qx.core.Environment.get("os.scrollBarOverlayed")){
 
@@ -62737,7 +62726,7 @@ qx.Class.define("qx.ui.table.pane.Model", {
       if(this.__tableColumnModel){
 
         this.__tableColumnModel.removeListener("visibilityChangedPre", this._onColVisibilityChanged, this);
-        this.__tableColumnModel.removeListener("headerCellRendererChanged", this._onColVisibilityChanged, this);
+        this.__tableColumnModel.removeListener("headerCellRendererChanged", this._onHeaderCellRendererChanged, this);
       };
       this.__tableColumnModel = tableColumnModel;
       this.__tableColumnModel.addListener("visibilityChangedPre", this._onColVisibilityChanged, this);
@@ -62820,7 +62809,7 @@ qx.Class.define("qx.ui.table.pane.Model", {
     if(this.__tableColumnModel){
 
       this.__tableColumnModel.removeListener("visibilityChangedPre", this._onColVisibilityChanged, this);
-      this.__tableColumnModel.removeListener("headerCellRendererChanged", this._onColVisibilityChanged, this);
+      this.__tableColumnModel.removeListener("headerCellRendererChanged", this._onHeaderCellRendererChanged, this);
     };
     this.__tableColumnModel = null;
   }
@@ -63158,7 +63147,7 @@ qx.Class.define("qx.ui.table.model.Simple", {
 
         startIndex = 0;
       };
-      rowArr.splice(0, 0, startIndex, Math.max(this.__rowArr.length, rowArr.length));
+      rowArr.splice(0, 0, startIndex, rowArr.length);
       Array.prototype.splice.apply(this.__rowArr, rowArr);
       var data = {
         firstRow : startIndex,
@@ -69710,8 +69699,16 @@ qx.Class.define("qx.ui.form.Spinner", {
     },
     _getFilterRegExp : function(){
 
-      var decimalSeparator = qx.locale.Number.getDecimalSeparator(qx.locale.Manager.getInstance().getLocale());
-      var groupSeparator = qx.locale.Number.getGroupSeparator(qx.locale.Manager.getInstance().getLocale());
+      var decimalSeparator,groupSeparator,locale;
+      if(this.getNumberFormat() !== null){
+
+        locale = this.getNumberFormat().getLocale();
+      } else {
+
+        locale = qx.locale.Manager.getInstance().getLocale();
+      };
+      decimalSeparator = qx.locale.Number.getDecimalSeparator(locale);
+      groupSeparator = qx.locale.Number.getGroupSeparator(locale);
       var prefix = "";
       var postfix = "";
       if(this.getNumberFormat() !== null){
@@ -69802,9 +69799,13 @@ qx.Class.define("qx.ui.form.Spinner", {
     },
     _applyNumberFormat : function(value, old){
 
-      var textfield = this.getChildControl("textfield");
-      textfield.setFilter(this._getFilterRegExp());
-      this.getNumberFormat().addListener("changeNumberFormat", this._onChangeNumberFormat, this);
+      var textField = this.getChildControl("textfield");
+      textField.setFilter(this._getFilterRegExp());
+      var numberFormat = this.getNumberFormat();
+      if(numberFormat !== null){
+
+        numberFormat.addListener("changeNumberFormat", this._onChangeNumberFormat, this);
+      };
       this._applyValue(this.__lastValidValue, undefined);
     },
     _getContentPaddingTarget : function(){
@@ -69908,14 +69909,18 @@ qx.Class.define("qx.ui.form.Spinner", {
 
         if(value > this.getMaximum()){
 
-          textField.setValue(this.getMaximum() + "");
-          return;
+          value = this.getMaximum();
         } else if(value < this.getMinimum()){
 
-          textField.setValue(this.getMinimum() + "");
-          return;
+          value = this.getMinimum();
         };
-        this.setValue(value);
+        if(value === this.__lastValidValue){
+
+          this._applyValue(this.__lastValidValue);
+        } else {
+
+          this.setValue(value);
+        };
       } else {
 
         this._applyValue(this.__lastValidValue, undefined);
@@ -70850,22 +70855,7 @@ qx.Bootstrap.define("qx.module.util.Array", {
   },
   defer : function(statics){
 
-    qxWeb.$attachStatic({
-      array : {
-        cast : statics.cast,
-        equals : statics.equals,
-        exclude : statics.exclude,
-        fromArguments : statics.fromArguments,
-        insertAfter : statics.insertAfter,
-        insertBefore : statics.insertBefore,
-        max : statics.max,
-        min : statics.min,
-        remove : statics.remove,
-        removeAll : statics.removeAll,
-        unique : statics.unique,
-        range : statics.range
-      }
-    });
+    qxWeb.$attachAll(this, "array");
   }
 });
 
@@ -71126,6 +71116,24 @@ qx.Class.define("qx.ui.form.CheckBox", {
 
 qx.Bootstrap.define("qx.module.TextSelection", {
   statics : {
+    __isInput : function(el){
+
+      var tag = el.tagName ? el.tagName.toLowerCase() : null;
+      return (tag === "input" || tag === "textarea");
+    },
+    __getTextNode : function(el){
+
+      for(var i = 0,l = el.childNodes.length;i < l;i++){
+
+        if(el.childNodes[i].nodeType === 3){
+
+          return el.childNodes[i];
+        };
+      };
+      return null;
+    }
+  },
+  members : {
     getTextSelection : function(){
 
       var el = this[0];
@@ -71208,34 +71216,11 @@ qx.Bootstrap.define("qx.module.TextSelection", {
         };
       });
       return this;
-    },
-    __isInput : function(el){
-
-      var tag = el.tagName ? el.tagName.toLowerCase() : null;
-      return (tag === "input" || tag === "textarea");
-    },
-    __getTextNode : function(el){
-
-      for(var i = 0,l = el.childNodes.length;i < l;i++){
-
-        if(el.childNodes[i].nodeType === 3){
-
-          return el.childNodes[i];
-        };
-      };
-      return null;
     }
   },
   defer : function(statics){
 
-    qxWeb.$attach({
-      "getTextSelection" : statics.getTextSelection,
-      "getTextSelectionLength" : statics.getTextSelectionLength,
-      "getTextSelectionStart" : statics.getTextSelectionStart,
-      "getTextSelectionEnd" : statics.getTextSelectionEnd,
-      "setTextSelection" : statics.setTextSelection,
-      "clearTextSelection" : statics.clearTextSelection
-    });
+    qxWeb.$attachAll(this);
   }
 });
 
@@ -73063,6 +73048,13 @@ qx.Class.define("qx.ui.list.List", {
       apply : "_applyRowHeight",
       themeable : true
     },
+    groupItemHeight : {
+      check : "Integer",
+      init : null,
+      nullable : true,
+      apply : "_applyGroupRowHeight",
+      themeable : true
+    },
     labelPath : {
       check : "String",
       apply : "_applyLabelPath",
@@ -73222,6 +73214,10 @@ qx.Class.define("qx.ui.list.List", {
 
       this.getPane().getRowConfig().setDefaultItemSize(value);
     },
+    _applyGroupRowHeight : function(value, old){
+
+      this.__updateGroupRowHeight();
+    },
     _applyLabelPath : function(value, old){
 
       this._provider.setLabelPath(value);
@@ -73265,6 +73261,22 @@ qx.Class.define("qx.ui.list.List", {
       this.getPane().getRowConfig().setItemCount(this.__lookupTable.length);
       this.getPane().fullUpdate();
     },
+    __updateGroupRowHeight : function(){
+
+      var rc = this.getPane().getRowConfig();
+      var gh = this.getGroupItemHeight();
+      rc.resetItemSizes();
+      if(gh){
+
+        for(var i = 0,l = this.__lookupTable.length;i < l;++i){
+
+          if(this.__lookupTable[i] == -1){
+
+            rc.setItemSize(i, gh);
+          };
+        };
+      };
+    },
     __buildUpLookupTable : function(){
 
       this.__lookupTable = [];
@@ -73283,6 +73295,7 @@ qx.Class.define("qx.ui.list.List", {
         this._runDelegateGroup(model);
       };
       this._updateSelection();
+      this.__updateGroupRowHeight();
       this.__updateRowCount();
     },
     _runDelegateFilter : function(model){
@@ -76458,7 +76471,7 @@ qx.Class.define("qx.ui.mobile.core.EventHandler", {
       var EventHandler = qx.ui.mobile.core.EventHandler;
       EventHandler.__scrollLeft = qx.bom.Viewport.getScrollLeft();
       EventHandler.__scrollTop = qx.bom.Viewport.getScrollTop();
-      EventHandler.__startY = domEvent.screenY;
+      EventHandler.__startY = domEvent.getScreenTop();
       EventHandler.__cancelActiveStateTimer();
       var target = domEvent.getTarget();
       while(target && target.parentNode && target.parentNode.nodeType == 1 && qx.bom.element.Attribute.get(target, "data-activatable") != "true"){
@@ -76487,8 +76500,8 @@ qx.Class.define("qx.ui.mobile.core.EventHandler", {
         return;
       };
       var EventHandler = qx.ui.mobile.core.EventHandler;
-      var deltaY = domEvent.screenY - EventHandler.__startY;
-      if(EventHandler.__activeTarget && Math.abs(deltaY) >= qx.event.handler.GestureCore.TAP_MAX_DISTANCE){
+      var deltaY = domEvent.getScreenTop() - EventHandler.__startY;
+      if(EventHandler.__activeTarget && Math.abs(deltaY) >= qx.event.handler.GestureCore.TAP_MAX_DISTANCE[domEvent.getPointerType()]){
 
         EventHandler.__removeActiveState();
       };
@@ -78266,7 +78279,7 @@ qx.Class.define("qx.io.request.AbstractRequest", {
     requestData : {
       check : function(value){
 
-        return qx.lang.Type.isString(value) || qx.Class.isSubClassOf(value.constructor, qx.core.Object) || qx.lang.Type.isObject(value) || qx.lang.Type.isArray(value);
+        return qx.lang.Type.isString(value) || qx.Class.isSubClassOf(value.constructor, qx.core.Object) || qx.lang.Type.isObject(value) || qx.lang.Type.isArray(value) || qx.Bootstrap.getClass(value) == "Blob" || qx.Bootstrap.getClass(value) == "ArrayBuffer" || qx.Bootstrap.getClass(value) == "FormData";
       },
       nullable : true
     },
@@ -78310,7 +78323,7 @@ qx.Class.define("qx.io.request.AbstractRequest", {
     },
     send : function(){
 
-      var transport = this._transport,url,method,async,serializedData;
+      var transport = this._transport,url,method,async,requestData;
       url = this._getConfiguredUrl();
       if(/\#/.test(url)){
 
@@ -78325,13 +78338,17 @@ qx.Class.define("qx.io.request.AbstractRequest", {
       };
       transport.open(method, url, async);
       this._setPhase("opened");
-      serializedData = this._serializeData(this.getRequestData());
+      requestData = this.getRequestData();
+      if(["ArrayBuffer", "Blob", "FormData"].indexOf(qx.Bootstrap.getClass(requestData)) == -1){
+
+        requestData = this._serializeData(requestData);
+      };
       this._setRequestHeaders();
       if(qx.core.Environment.get("qx.debug.io")){
 
         this.debug("Send low-level request");
       };
-      method == "GET" ? transport.send() : transport.send(serializedData);
+      method == "GET" ? transport.send() : transport.send(requestData);
       this._setPhase("sent");
     },
     abort : function(){
@@ -78562,6 +78579,7 @@ qx.Class.define("qx.io.request.AbstractRequest", {
 
         return qx.util.Uri.toParameter(data, isPost);
       };
+      return null;
     }
   },
   environment : {
@@ -78924,11 +78942,19 @@ qx.Bootstrap.define("qx.bom.request.Xhr", {
     getResponseHeader : function(header){
 
       this.__checkDisposed();
+      if(qx.core.Environment.get("browser.documentmode") === 9 && this.__nativeXhr.aborted){
+
+        return "";
+      };
       return this.__nativeXhr.getResponseHeader(header);
     },
     getAllResponseHeaders : function(){
 
       this.__checkDisposed();
+      if(qx.core.Environment.get("browser.documentmode") === 9 && this.__nativeXhr.aborted){
+
+        return "";
+      };
       return this.__nativeXhr.getAllResponseHeaders();
     },
     overrideMimeType : function(mimeType){
@@ -79138,7 +79164,7 @@ qx.Bootstrap.define("qx.bom.request.Xhr", {
         error = !this.responseText;
       } else {
 
-        error = !this.statusText;
+        error = !this.statusText && this.status !== 204;
       };
       return error;
     },
@@ -79147,6 +79173,7 @@ qx.Bootstrap.define("qx.bom.request.Xhr", {
       var nxhr = this.__nativeXhr;
       this.readyState = qx.bom.request.Xhr.DONE;
       this.__timeout = true;
+      nxhr.aborted = true;
       nxhr.abort();
       this.responseText = "";
       this.responseXML = null;
@@ -80902,8 +80929,8 @@ qx.Class.define("qx.ui.tree.VirtualTree", {
       while(index > 0){
 
         index--;
-        var levelBevore = this.__nestingLevel[index];
-        if(levelBevore < level){
+        var levelBefore = this.__nestingLevel[index];
+        if(levelBefore < level){
 
           return this.__lookupTable.getItem(index);
         };
@@ -81041,7 +81068,10 @@ qx.Mixin.define("qx.ui.tree.core.MWidgetController", {
 
       this.bindProperty("", "model", null, item, index);
       this.bindProperty(this.getLabelPath(), "label", this.getLabelOptions(), item, index);
-      try{
+      var bindPath = this.__getBindPath(index);
+      var bindTarget = this._tree.getLookupTable();
+      bindTarget = qx.data.SingleValueBinding.resolvePropertyChain(bindTarget, bindPath);
+      if(qx.util.OOUtil.hasProperty(bindTarget.constructor, this.getChildProperty())){
 
         this.bindProperty(this.getChildProperty() + ".length", "appearance", {
           converter : function(){
@@ -81049,7 +81079,7 @@ qx.Mixin.define("qx.ui.tree.core.MWidgetController", {
             return "virtual-tree-folder";
           }
         }, item, index);
-      } catch(ex) {
+      } else {
 
         item.setAppearance("virtual-tree-file");
       };
@@ -83395,11 +83425,11 @@ qx.Class.define("qx.ui.form.AbstractSelectBox", {
       });
       control.addListener("changeSelection", this._onListChangeSelection, this);
       control.addListener("pointerdown", this._onListPointerDown, this);
+      control.getChildControl("pane").addListener("tap", this.close, this);
       break;case "popup":
-      control = new qx.ui.popup.Popup(new qx.ui.layout.VBox);
+      control = new qx.ui.popup.Popup(new qx.ui.layout.VBox());
       control.setAutoHide(false);
       control.setKeepActive(true);
-      control.addListener("tap", this.close, this);
       control.add(this.getChildControl("list"));
       control.addListener("changeVisibility", this._onPopupChangeVisibility, this);
       break;};
@@ -84654,6 +84684,201 @@ qx.Bootstrap.define("qx.log.appender.Native", {
   }
 });
 
+qx.Class.define("qx.ui.table.cellrenderer.Conditional", {
+  extend : qx.ui.table.cellrenderer.Default,
+  construct : function(align, color, style, weight){
+
+    this.base(arguments);
+    this.numericAllowed = ["==", "!=", ">", "<", ">=", "<="];
+    this.betweenAllowed = ["between", "!between"];
+    this.conditions = [];
+    this.__defaultTextAlign = align || "";
+    this.__defaultColor = color || "";
+    this.__defaultFontStyle = style || "";
+    this.__defaultFontWeight = weight || "";
+  },
+  members : {
+    __defaultTextAlign : null,
+    __defaultColor : null,
+    __defaultFontStyle : null,
+    __defaultFontWeight : null,
+    __applyFormatting : function(condition, style){
+
+      if(condition[1] != null){
+
+        style["text-align"] = condition[1];
+      };
+      if(condition[2] != null){
+
+        style["color"] = condition[2];
+      };
+      if(condition[3] != null){
+
+        style["font-style"] = condition[3];
+      };
+      if(condition[4] != null){
+
+        style["font-weight"] = condition[4];
+      };
+    },
+    addNumericCondition : function(condition, value1, align, color, style, weight, target){
+
+      var temp = null;
+      if(qx.lang.Array.contains(this.numericAllowed, condition)){
+
+        if(value1 != null){
+
+          temp = [condition, align, color, style, weight, value1, target];
+        };
+      };
+      if(temp != null){
+
+        this.conditions.push(temp);
+      } else {
+
+        throw new Error("Condition not recognized or value is null!");
+      };
+    },
+    addBetweenCondition : function(condition, value1, value2, align, color, style, weight, target){
+
+      if(qx.lang.Array.contains(this.betweenAllowed, condition)){
+
+        if(value1 != null && value2 != null){
+
+          var temp = [condition, align, color, style, weight, value1, value2, target];
+        };
+      };
+      if(temp != null){
+
+        this.conditions.push(temp);
+      } else {
+
+        throw new Error("Condition not recognized or value1/value2 is null!");
+      };
+    },
+    addRegex : function(regex, align, color, style, weight, target){
+
+      if(regex != null){
+
+        var temp = ["regex", align, color, style, weight, regex, target];
+      };
+      if(temp != null){
+
+        this.conditions.push(temp);
+      } else {
+
+        throw new Error("regex cannot be null!");
+      };
+    },
+    _getCellStyle : function(cellInfo){
+
+      var tableModel = cellInfo.table.getTableModel();
+      var i;
+      var cond_test;
+      var compareValue;
+      var style = {
+        "text-align" : this.__defaultTextAlign,
+        "color" : this.__defaultColor,
+        "font-style" : this.__defaultFontStyle,
+        "font-weight" : this.__defaultFontWeight
+      };
+      for(i in this.conditions){
+
+        cond_test = false;
+        if(qx.lang.Array.contains(this.numericAllowed, this.conditions[i][0])){
+
+          if(this.conditions[i][6] == null){
+
+            compareValue = cellInfo.value;
+          } else {
+
+            compareValue = tableModel.getValueById(this.conditions[i][6], cellInfo.row);
+          };
+          switch(this.conditions[i][0]){case "==":
+          if(compareValue == this.conditions[i][5]){
+
+            cond_test = true;
+          };
+          break;case "!=":
+          if(compareValue != this.conditions[i][5]){
+
+            cond_test = true;
+          };
+          break;case ">":
+          if(compareValue > this.conditions[i][5]){
+
+            cond_test = true;
+          };
+          break;case "<":
+          if(compareValue < this.conditions[i][5]){
+
+            cond_test = true;
+          };
+          break;case ">=":
+          if(compareValue >= this.conditions[i][5]){
+
+            cond_test = true;
+          };
+          break;case "<=":
+          if(compareValue <= this.conditions[i][5]){
+
+            cond_test = true;
+          };
+          break;};
+        } else if(qx.lang.Array.contains(this.betweenAllowed, this.conditions[i][0])){
+
+          if(this.conditions[i][7] == null){
+
+            compareValue = cellInfo.value;
+          } else {
+
+            compareValue = tableModel.getValueById(this.conditions[i][7], cellInfo.row);
+          };
+          switch(this.conditions[i][0]){case "between":
+          if(compareValue >= this.conditions[i][5] && compareValue <= this.conditions[i][6]){
+
+            cond_test = true;
+          };
+          break;case "!between":
+          if(compareValue < this.conditions[i][5] || compareValue > this.conditions[i][6]){
+
+            cond_test = true;
+          };
+          break;};
+        } else if(this.conditions[i][0] == "regex"){
+
+          if(this.conditions[i][6] == null){
+
+            compareValue = cellInfo.value;
+          } else {
+
+            compareValue = tableModel.getValueById(this.conditions[i][6], cellInfo.row);
+          };
+          var the_pattern = new RegExp(this.conditions[i][5], 'g');
+          cond_test = the_pattern.test(compareValue);
+        };;
+        if(cond_test == true){
+
+          this.__applyFormatting(this.conditions[i], style);
+        };
+      };
+      var styleString = [];
+      for(var key in style){
+
+        if(style[key]){
+
+          styleString.push(key, ":", style[key], ";");
+        };
+      };
+      return styleString.join("");
+    }
+  },
+  destruct : function(){
+
+    this.numericAllowed = this.betweenAllowed = this.conditions = null;
+  }
+});
+
 qx.Mixin.define("qx.dev.unit.MTestLoader", {
   properties : {
     suite : {
@@ -85589,7 +85814,7 @@ qx.Class.define("qx.ui.tooltip.Manager", {
         };
         target = target.getLayoutParent();
       };
-      if(!target || !target.getEnabled() || target.isBlockToolTip() || (!invalidMessage && !this.getShowToolTips()) || (invalidMessage && !this.getShowInvalidToolTips())){
+      if(!target || (!target.getEnabled() && !target.isShowToolTipWhenDisabled()) || target.isBlockToolTip() || (!invalidMessage && !this.getShowToolTips()) || (invalidMessage && !this.getShowInvalidToolTips())){
 
         return;
       };
@@ -85675,9 +85900,14 @@ qx.Mixin.define("qx.ui.window.MDesktop", {
     activeWindow : {
       check : "qx.ui.window.Window",
       apply : "_applyActiveWindow",
+      event : "changeActiveWindow",
       init : null,
       nullable : true
     }
+  },
+  events : {
+    windowAdded : "qx.event.type.Data",
+    windowRemoved : "qx.event.type.Data"
   },
   members : {
     __windows : null,
@@ -85738,6 +85968,7 @@ qx.Mixin.define("qx.ui.window.MDesktop", {
       if(!qx.lang.Array.contains(this.getWindows(), win)){
 
         this.getWindows().push(win);
+        this.fireDataEvent("windowAdded", win);
         win.addListener("changeActive", this._onChangeActive, this);
         win.addListener("changeModal", this._onChangeModal, this);
         win.addListener("changeVisibility", this._onChangeVisibility, this);
@@ -85757,11 +85988,15 @@ qx.Mixin.define("qx.ui.window.MDesktop", {
     },
     _removeWindow : function(win){
 
-      qx.lang.Array.remove(this.getWindows(), win);
-      win.removeListener("changeActive", this._onChangeActive, this);
-      win.removeListener("changeModal", this._onChangeModal, this);
-      win.removeListener("changeVisibility", this._onChangeVisibility, this);
-      this.getWindowManager().updateStack();
+      if(qx.lang.Array.contains(this.getWindows(), win)){
+
+        qx.lang.Array.remove(this.getWindows(), win);
+        this.fireDataEvent("windowRemoved", win);
+        win.removeListener("changeActive", this._onChangeActive, this);
+        win.removeListener("changeModal", this._onChangeModal, this);
+        win.removeListener("changeVisibility", this._onChangeVisibility, this);
+        this.getWindowManager().updateStack();
+      };
     },
     getWindows : function(){
 
@@ -86180,6 +86415,74 @@ qx.Class.define("qx.ui.progressive.model.Abstract", {
 
 qxWeb.define("qx.module.Placement", {
   statics : {
+    _getAxis : function(mode){
+
+      switch(mode){case "keep-align":
+      return qx.util.placement.KeepAlignAxis;case "best-fit":
+      return qx.util.placement.BestFitAxis;case "direct":default:
+      return qx.util.placement.DirectAxis;};
+    },
+    _computePlacement : function(axes, size, area, target, offsets, position){
+
+      var left = axes.x.computeStart(size.width, {
+        start : target.left,
+        end : target.right
+      }, {
+        start : offsets.left,
+        end : offsets.right
+      }, area.width, position.x);
+      var top = axes.y.computeStart(size.height, {
+        start : target.top,
+        end : target.bottom
+      }, {
+        start : offsets.top,
+        end : offsets.bottom
+      }, area.height, position.y);
+      return {
+        left : left,
+        top : top
+      };
+    },
+    _getPositionX : function(edge, align){
+
+      if(edge == "left"){
+
+        return "edge-start";
+      } else if(edge == "right"){
+
+        return "edge-end";
+      } else if(align == "left"){
+
+        return "align-start";
+      } else if(align == "center"){
+
+        return "align-center";
+      } else if(align == "right"){
+
+        return "align-end";
+      };;;;
+    },
+    _getPositionY : function(edge, align){
+
+      if(edge == "top"){
+
+        return "edge-start";
+      } else if(edge == "bottom"){
+
+        return "edge-end";
+      } else if(align == "top"){
+
+        return "align-start";
+      } else if(align == "middle"){
+
+        return "align-center";
+      } else if(align == "bottom"){
+
+        return "align-end";
+      };;;;
+    }
+  },
+  members : {
     placeTo : function(target, position, offsets, modeX, modeY){
 
       if(!this[0] || !target){
@@ -86187,7 +86490,7 @@ qxWeb.define("qx.module.Placement", {
         return this;
       };
       target = qxWeb(target);
-      var visible = this.isRendered();
+      var visible = this.isRendered() && this[0].offsetWidth > 0 && this[0].offsetHeight > 0;
       var displayStyleValue = null;
       var visibilityStyleValue = null;
       if(!visible){
@@ -86268,79 +86571,11 @@ qxWeb.define("qx.module.Placement", {
         top : newLocation.top + "px"
       });
       return this;
-    },
-    _getAxis : function(mode){
-
-      switch(mode){case "keep-align":
-      return qx.util.placement.KeepAlignAxis;case "best-fit":
-      return qx.util.placement.BestFitAxis;case "direct":default:
-      return qx.util.placement.DirectAxis;};
-    },
-    _computePlacement : function(axes, size, area, target, offsets, position){
-
-      var left = axes.x.computeStart(size.width, {
-        start : target.left,
-        end : target.right
-      }, {
-        start : offsets.left,
-        end : offsets.right
-      }, area.width, position.x);
-      var top = axes.y.computeStart(size.height, {
-        start : target.top,
-        end : target.bottom
-      }, {
-        start : offsets.top,
-        end : offsets.bottom
-      }, area.height, position.y);
-      return {
-        left : left,
-        top : top
-      };
-    },
-    _getPositionX : function(edge, align){
-
-      if(edge == "left"){
-
-        return "edge-start";
-      } else if(edge == "right"){
-
-        return "edge-end";
-      } else if(align == "left"){
-
-        return "align-start";
-      } else if(align == "center"){
-
-        return "align-center";
-      } else if(align == "right"){
-
-        return "align-end";
-      };;;;
-    },
-    _getPositionY : function(edge, align){
-
-      if(edge == "top"){
-
-        return "edge-start";
-      } else if(edge == "bottom"){
-
-        return "edge-end";
-      } else if(align == "top"){
-
-        return "align-start";
-      } else if(align == "middle"){
-
-        return "align-center";
-      } else if(align == "bottom"){
-
-        return "align-end";
-      };;;;
     }
   },
   defer : function(statics){
 
-    qxWeb.$attach({
-      "placeTo" : statics.placeTo
-    });
+    qxWeb.$attachAll(this);
   }
 });
 
@@ -86971,19 +87206,19 @@ qx.Class.define("qx.ui.mobile.form.Slider", {
       init : "slider"
     },
     minimum : {
-      check : "Integer",
+      check : "Number",
       init : 0,
       apply : "_refresh",
       event : "changeMinimum"
     },
     maximum : {
-      check : "Integer",
+      check : "Number",
       init : 100,
       apply : "_refresh",
       event : "changeMaximum"
     },
     step : {
-      check : "Integer",
+      check : "Number",
       init : 1,
       event : "changeStep"
     },
@@ -93287,7 +93522,7 @@ qx.Class.define("qx.ui.form.validation.Manager", {
         this.__syncValid = formValid && this.__syncValid;
       };
       valid = formValid && valid;
-      this.__setValid(valid);
+      this._setValid(valid);
       if(qx.lang.Object.isEmpty(this.__asyncResults)){
 
         this.fireEvent("complete");
@@ -93416,7 +93651,7 @@ qx.Class.define("qx.ui.form.validation.Manager", {
       var clazz = formItem.constructor;
       return qx.Class.hasInterface(clazz, qx.ui.core.ISingleSelection);
     },
-    __setValid : function(value){
+    _setValid : function(value){
 
       this._showToolTip(value);
       var oldValue = this.__valid;
@@ -93518,6 +93753,7 @@ qx.Class.define("qx.ui.form.validation.Manager", {
         dataEntry.item.setValid(true);
       };
       this.__valid = null;
+      this._showToolTip(true);
     },
     setItemValid : function(formItem, valid){
 
@@ -93542,7 +93778,7 @@ qx.Class.define("qx.ui.form.validation.Manager", {
           return;
         };
       };
-      this.__setValid(valid);
+      this._setValid(valid);
       this.__asyncResults = {
       };
       this.fireEvent("complete");
@@ -93817,8 +94053,11 @@ qx.Class.define("qx.ui.form.renderer.Single", {
     _buttonRow : null,
     _onFormChange : function(){
 
-      this._buttonRow.destroy();
-      this._buttonRow = null;
+      if(this._buttonRow){
+
+        this._buttonRow.destroy();
+        this._buttonRow = null;
+      };
       this._row = 0;
       this.base(arguments);
     },
@@ -94238,12 +94477,13 @@ qx.Class.define("qx.ui.tabview.TabView", {
       layout.setReversed(reversed);
       bar.setOrientation(horizontal ? "vertical" : "horizontal");
       var children = this.getChildren();
+      var i,l;
       if(old){
 
         var oldState = this.__barPositionToState[old];
         bar.removeState(oldState);
         pane.removeState(oldState);
-        for(var i = 0,l = children.length;i < l;i++){
+        for(i = 0,l = children.length;i < l;i++){
 
           children[i].removeState(oldState);
         };
@@ -94253,7 +94493,7 @@ qx.Class.define("qx.ui.tabview.TabView", {
         var newState = this.__barPositionToState[value];
         bar.addState(newState);
         pane.addState(newState);
-        for(var i = 0,l = children.length;i < l;i++){
+        for(i = 0,l = children.length;i < l;i++){
 
           children[i].addState(newState);
         };
@@ -94584,11 +94824,7 @@ qx.Bootstrap.define("qx.module.util.Type", {
   },
   defer : function(statics){
 
-    qxWeb.$attachStatic({
-      type : {
-        get : statics.get
-      }
-    });
+    qxWeb.$attachAll(this, "type");
   }
 });
 
@@ -98229,13 +98465,7 @@ qx.Bootstrap.define("qx.module.Template", {
   },
   defer : function(statics){
 
-    qxWeb.$attachStatic({
-      "template" : {
-        get : statics.get,
-        render : statics.render,
-        renderToNode : statics.renderToNode
-      }
-    });
+    qxWeb.$attachAll(this, "template");
   }
 });
 
@@ -98282,6 +98512,7 @@ qx.Bootstrap.define("qx.ui.website.Tabs", {
     "changeSelected" : "Number"
   },
   members : {
+    __mediaQueryListener : null,
     init : function(){
 
       if(!this.base(arguments)){
@@ -98294,99 +98525,96 @@ qx.Bootstrap.define("qx.ui.website.Tabs", {
         this.setConfig("orientation", this._initMediaQueryListener(mediaQuery));
       };
       var orientation = this.getConfig("orientation");
-      this._forEachElementWrapped(function(tabs){
+      this.addClasses([this.getCssPrefix(), this.getCssPrefix() + "-" + orientation, "qx-flex-ready"]);
+      if(this.getChildren("ul").length === 0){
 
-        tabs.addClasses([this.getCssPrefix(), this.getCssPrefix() + "-" + orientation]);
-        if(tabs.getChildren("ul").length === 0){
+        var list = qxWeb.create("<ul/>");
+        var content = this.getChildren();
+        if(content.length > 0){
 
-          var list = qxWeb.create("<ul/>");
-          var content = tabs.getChildren();
-          if(content.length > 0){
+          list.insertBefore(content.eq(0));
+        } else {
 
-            list.insertBefore(content.eq(0));
-          } else {
-
-            tabs.append(list);
-          };
+          this.append(list);
         };
-        var container = tabs.find("> ." + this.getCssPrefix() + "-container");
-        var buttons = tabs.getChildren("ul").getFirst().getChildren("li").not("." + this.getCssPrefix() + "-page");
-        buttons._forEachElementWrapped(function(button){
+      };
+      var container = this.find("> ." + this.getCssPrefix() + "-container");
+      var buttons = this.getChildren("ul").getFirst().getChildren("li").not("." + this.getCssPrefix() + "-page");
+      buttons._forEachElementWrapped(function(button){
 
-          button.addClass(this.getCssPrefix() + "-button");
-          var pageSelector = button.getData(this.getCssPrefix() + "-page");
-          if(!pageSelector){
+        button.addClass(this.getCssPrefix() + "-button");
+        var pageSelector = button.getData(this.getCssPrefix() + "-page");
+        if(!pageSelector){
 
-            return;
-          };
-          button.addClass(this.getCssPrefix() + "-button").$onFirstCollection("tap", this._onTap, tabs);
-          var page = tabs._getPage(button);
-          if(page.length > 0){
+          return;
+        };
+        button.addClass(this.getCssPrefix() + "-button").on("tap", this._onTap, this);
+        var page = this._getPage(button);
+        if(page.length > 0){
 
-            page.addClass(this.getCssPrefix() + "-page");
-            if(orientation == "vertical"){
+          page.addClass(this.getCssPrefix() + "-page");
+          if(orientation == "vertical"){
 
-              this.__deactivateTransition(page);
-              if(q.getNodeName(page[0]) == "div"){
+            this.__deactivateTransition(page);
+            if(q.getNodeName(page[0]) == "div"){
 
-                var li = q.create("<li>").addClass(this.getCssPrefix() + "-page").setAttribute("id", page.getAttribute("id")).insertAfter(button[0]);
-                page.remove().getChildren().appendTo(li);
-                page = li;
-              };
-              this._storePageHeight(page);
-            } else if(orientation == "horizontal"){
-
-              if(q.getNodeName(page[0]) == "li"){
-
-                var div = q.create("<div>").addClass(this.getCssPrefix() + "-page").setAttribute("id", page.getAttribute("id"));
-                page.remove().getChildren().appendTo(div);
-                page = div;
-              };
+              var li = q.create("<li>").addClass(this.getCssPrefix() + "-page").setAttribute("id", page.getAttribute("id")).insertAfter(button[0]);
+              page.remove().getChildren().appendTo(li);
+              page = li;
             };
-            if(orientation == "horizontal"){
+            this._storePageHeight(page);
+          } else if(orientation == "horizontal"){
 
-              if(container.length === 0){
+            if(q.getNodeName(page[0]) == "li"){
 
-                container = qxWeb.create("<div class='" + this.getCssPrefix() + "-container'>").insertAfter(tabs.find("> ul")[0]);
-              };
-              page.appendTo(container[0]);
+              var div = q.create("<div>").addClass(this.getCssPrefix() + "-page").setAttribute("id", page.getAttribute("id"));
+              page.remove().getChildren().appendTo(div);
+              page = div;
             };
           };
-          this._showPage(null, button);
-          this.__activateTransition(page);
-        }.bind(this));
-        if(orientation == "vertical" && container.length == 1 && container.getChildren().length === 0){
+          if(orientation == "horizontal"){
 
-          container.remove();
-        };
-        if(orientation == "horizontal" && this.getConfig("align") == "right" && q.env.get("engine.name") == "mshtml" && q.env.get("browser.documentmode") < 10){
+            if(container.length === 0){
 
-          buttons.remove();
-          for(var i = buttons.length - 1;i >= 0;i--){
-
-            tabs.find("> ul").append(buttons[i]);
+              container = qxWeb.create("<div class='" + this.getCssPrefix() + "-container'>").insertAfter(this.find("> ul")[0]);
+            };
+            page.appendTo(container[0]);
           };
         };
-        var active = buttons.filter("." + this.getCssPrefix() + "-button-active");
-        var preselected = this.getConfig("preselected");
-        if(active.length === 0 && typeof preselected == "number"){
-
-          active = buttons.eq(preselected).addClass(this.getCssPrefix() + "-button-active");
-        };
-        if(active.length > 0){
-
-          var activePage = this._getPage(active);
-          this.__deactivateTransition(activePage);
-          this._showPage(active, null);
-          this.__activateTransition(activePage);
-        };
-        tabs.getChildren("ul").getFirst().$onFirstCollection("keydown", this._onKeyDown, this);
-        if(orientation === "horizontal"){
-
-          this._applyAlignment(tabs);
-        };
-        qxWeb(window).on("resize", tabs._onResize, tabs);
+        this._showPage(null, button);
+        this.__activateTransition(page);
       }.bind(this));
+      if(orientation == "vertical" && container.length == 1 && container.getChildren().length === 0){
+
+        container.remove();
+      };
+      if(orientation == "horizontal" && this.getConfig("align") == "right" && q.env.get("engine.name") == "mshtml" && q.env.get("browser.documentmode") < 10){
+
+        buttons.remove();
+        for(var i = buttons.length - 1;i >= 0;i--){
+
+          this.find("> ul").append(buttons[i]);
+        };
+      };
+      var active = buttons.filter("." + this.getCssPrefix() + "-button-active");
+      var preselected = this.getConfig("preselected");
+      if(active.length === 0 && typeof preselected == "number"){
+
+        active = buttons.eq(preselected).addClass(this.getCssPrefix() + "-button-active");
+      };
+      if(active.length > 0){
+
+        var activePage = this._getPage(active);
+        this.__deactivateTransition(activePage);
+        this._showPage(active, null);
+        this.__activateTransition(activePage);
+      };
+      this.getChildren("ul").getFirst().on("keydown", this._onKeyDown, this);
+      if(orientation === "horizontal"){
+
+        this._applyAlignment(this);
+      };
+      qxWeb(window).on("resize", this._onResize, this);
       return true;
     },
     render : function(){
@@ -98407,11 +98635,11 @@ qx.Bootstrap.define("qx.ui.website.Tabs", {
     },
     _initMediaQueryListener : function(mediaQuery){
 
-      var mql = this.getProperty("mediaQueryListener");
+      var mql = this.__mediaQueryListener;
       if(!mql){
 
         mql = q.matchMedia(mediaQuery);
-        this.setProperty("mediaQueryListener", mql);
+        this.__mediaQueryListener = mql;
         mql.on("change", function(query){
 
           this.render();
@@ -98427,74 +98655,68 @@ qx.Bootstrap.define("qx.ui.website.Tabs", {
     },
     _renderHorizontal : function(){
 
-      this._forEachElementWrapped(function(tabs){
+      this.removeClass(this.getCssPrefix() + "-vertical").addClasses([this.getCssPrefix() + "", this.getCssPrefix() + "-horizontal"]).find("> ul").addClass("qx-hbox");
+      var container = this.find("> ." + this.getCssPrefix() + "-container");
+      if(container.length == 0){
 
-        tabs.removeClass(this.getCssPrefix() + "-vertical").addClasses([this.getCssPrefix() + "", this.getCssPrefix() + "-horizontal", "qx-flex-ready"]).find("> ul").addClass("qx-hbox");
-        var container = tabs.find("> ." + this.getCssPrefix() + "-container");
-        if(container.length == 0){
+        container = qxWeb.create("<div class='" + this.getCssPrefix() + "-container'>").insertAfter(this.find("> ul")[0]);
+      };
+      var selectedPage;
+      this.find("> ul > ." + this.getCssPrefix() + "-button")._forEachElementWrapped(function(li){
 
-          container = qxWeb.create("<div class='" + this.getCssPrefix() + "-container'>").insertAfter(tabs.find("> ul")[0]);
+        var page = this.find(li.getData(this.getCssPrefix() + "-page"));
+        if(q.getNodeName(page[0]) == "li"){
+
+          var div = q.create("<div>").addClass(this.getCssPrefix() + "-page").setAttribute("id", page.getAttribute("id"));
+          page.remove().getChildren().appendTo(div);
+          page = div;
         };
-        var selectedPage;
-        tabs.find("> ul > ." + this.getCssPrefix() + "-button")._forEachElementWrapped(function(li){
+        page.appendTo(container[0]);
+        this._switchPages(page, null);
+        if(li.hasClass(this.getCssPrefix() + "-button-active")){
 
-          var page = qxWeb(li.getData(this.getCssPrefix() + "-page"));
-          if(q.getNodeName(page[0]) == "li"){
-
-            var div = q.create("<div>").addClass(this.getCssPrefix() + "-page").setAttribute("id", page.getAttribute("id"));
-            page.remove().getChildren().appendTo(div);
-            page = div;
-          };
-          page.appendTo(container[0]);
-          tabs._switchPages(page, null);
-          if(li.hasClass(this.getCssPrefix() + "-button-active")){
-
-            selectedPage = page;
-          };
-        }.bind(this));
-        if(!selectedPage){
-
-          var firstButton = tabs.find("> ul > ." + this.getCssPrefix() + "-button").eq(0).addClass(this.getCssPrefix() + "-button-active");
-          selectedPage = this._getPage(firstButton);
+          selectedPage = page;
         };
-        tabs._switchPages(null, selectedPage);
-        this._applyAlignment(tabs);
-      });
+      }.bind(this));
+      if(!selectedPage){
+
+        var firstButton = this.find("> ul > ." + this.getCssPrefix() + "-button").eq(0).addClass(this.getCssPrefix() + "-button-active");
+        selectedPage = this._getPage(firstButton);
+      };
+      this._switchPages(null, selectedPage);
+      this._applyAlignment(this);
       this.setEnabled(this.getEnabled());
       return this;
     },
     _renderVertical : function(){
 
-      this._forEachElementWrapped(function(tabs){
+      this.find("> ul.qx-hbox").removeClass("qx-hbox");
+      this.removeClasses([this.getCssPrefix() + "-horizontal"]).addClasses([this.getCssPrefix() + "", this.getCssPrefix() + "-vertical"]).getChildren("ul").getFirst().getChildren("li").not("." + this.getCssPrefix() + "-page")._forEachElementWrapped(function(button){
 
-        tabs.find("> ul.qx-hbox").removeClass("qx-hbox");
-        tabs.removeClasses([this.getCssPrefix() + "-horizontal", "qx-flex-ready"]).addClasses([this.getCssPrefix() + "", this.getCssPrefix() + "-vertical"]).getChildren("ul").getFirst().getChildren("li").not("." + this.getCssPrefix() + "-page")._forEachElementWrapped(function(button){
+        button.addClass(this.getCssPrefix() + "-button");
+        var page = this._getPage(button);
+        if(page.length === 0){
 
-          button.addClass(this.getCssPrefix() + "-button");
-          var page = this._getPage(button);
-          if(page.length === 0){
+          return;
+        };
+        this.__deactivateTransition(page);
+        if(q.getNodeName(page[0]) == "div"){
 
-            return;
-          };
-          this.__deactivateTransition(page);
-          if(q.getNodeName(page[0]) == "div"){
+          var li = q.create("<li>").addClass(this.getCssPrefix() + "-page").setAttribute("id", page.getAttribute("id"));
+          page.getChildren().appendTo(li);
+          li.insertAfter(button[0]);
+          page.remove();
+          page = li;
+        };
+        this._storePageHeight(page);
+        if(button.hasClass(this.getCssPrefix() + "-button-active")){
 
-            var li = q.create("<li>").addClass(this.getCssPrefix() + "-page").setAttribute("id", page.getAttribute("id"));
-            page.getChildren().appendTo(li);
-            li.insertAfter(button[0]);
-            page.remove();
-            page = li;
-          };
-          this._storePageHeight(page);
-          if(button.hasClass(this.getCssPrefix() + "-button-active")){
+          this._switchPages(null, page);
+        } else {
 
-            this._switchPages(null, page);
-          } else {
-
-            this._switchPages(page, null);
-          };
-          this.__activateTransition(page);
-        }.bind(this));
+          this._switchPages(page, null);
+        };
+        this.__activateTransition(page);
       }.bind(this));
       this.setEnabled(this.getEnabled());
       return this;
@@ -98511,55 +98733,49 @@ qx.Bootstrap.define("qx.ui.website.Tabs", {
     },
     addButton : function(label, pageSelector){
 
-      this._forEachElementWrapped(function(item){
+      var link = qxWeb.create(qxWeb.template.render(this.getTemplate("button"), {
+        content : label
+      })).addClass(this.getCssPrefix() + "-button");
+      var list = this.find("> ul");
+      var links = list.getChildren("li");
+      if(list.hasClass(this.getCssPrefix() + "-right") && links.length > 0){
 
-        var link = qxWeb.create(qxWeb.template.render(item.getTemplate("button"), {
-          content : label
-        })).addClass(this.getCssPrefix() + "-button");
-        var list = item.find("> ul");
-        var links = list.getChildren("li");
-        if(list.hasClass(this.getCssPrefix() + "-right") && links.length > 0){
+        link.insertBefore(links.getFirst());
+      } else {
 
-          link.insertBefore(links.getFirst());
+        link.appendTo(list);
+      };
+      link.on("tap", this._onTap, this).addClass(this.getCssPrefix() + "-button");
+      if(this.find("> ul ." + this.getCssPrefix() + "-button").length === 1){
+
+        link.addClass(this.getCssPrefix() + "-button-active");
+      };
+      if(pageSelector){
+
+        link.setData(this.getCssPrefix() + "-page", pageSelector);
+        var page = this._getPage(link);
+        page.addClass(this.getCssPrefix() + "-page");
+        if(link.hasClass(this.getCssPrefix() + "-button-active")){
+
+          this._switchPages(null, page);
         } else {
 
-          link.appendTo(list);
+          this._switchPages(page, null);
         };
-        link.$onFirstCollection("tap", this._onTap, item).addClass(this.getCssPrefix() + "-button");
-        if(item.find("> ul ." + this.getCssPrefix() + "-button").length === 1){
-
-          link.addClass(this.getCssPrefix() + "-button-active");
-        };
-        if(pageSelector){
-
-          link.setData(this.getCssPrefix() + "-page", pageSelector);
-          var page = this._getPage(link);
-          page.addClass(this.getCssPrefix() + "-page");
-          if(link.hasClass(this.getCssPrefix() + "-button-active")){
-
-            this._switchPages(null, page);
-          } else {
-
-            this._switchPages(page, null);
-          };
-        };
-      }, this);
+      };
       return this;
     },
     select : function(index){
 
-      this._forEachElementWrapped(function(tabs){
+      var buttons = this.find("> ul > ." + this.getCssPrefix() + "-button");
+      var oldButton = this.find("> ul > ." + this.getCssPrefix() + "-button-active").removeClass(this.getCssPrefix() + "-button-active");
+      if(this.getConfig("align") == "right"){
 
-        var buttons = tabs.find("> ul > ." + this.getCssPrefix() + "-button");
-        var oldButton = tabs.find("> ul > ." + this.getCssPrefix() + "-button-active").removeClass(this.getCssPrefix() + "-button-active");
-        if(this.getConfig("align") == "right"){
-
-          index = buttons.length - 1 - index;
-        };
-        var newButton = buttons.eq(index).addClass(this.getCssPrefix() + "-button-active");
-        tabs._showPage(newButton, oldButton);
-        tabs.emit("changeSelected", index);
-      });
+        index = buttons.length - 1 - index;
+      };
+      var newButton = buttons.eq(index).addClass(this.getCssPrefix() + "-button-active");
+      this._showPage(newButton, oldButton);
+      this.emit("changeSelected", index);
       return this;
     },
     _onTap : function(e){
@@ -98570,39 +98786,36 @@ qx.Bootstrap.define("qx.ui.website.Tabs", {
       };
       var orientation = this.getConfig("orientation");
       var tappedButton = e.getCurrentTarget();
-      this._forEachElementWrapped(function(tabs){
+      var oldButton = this.find("> ul > ." + this.getCssPrefix() + "-button-active");
+      if(oldButton[0] == tappedButton && orientation == "horizontal"){
 
-        var oldButton = tabs.find("> ul > ." + this.getCssPrefix() + "-button-active");
-        if(oldButton[0] == tappedButton && orientation == "horizontal"){
+        return;
+      };
+      oldButton.removeClass(this.getCssPrefix() + "-button-active");
+      if(orientation == "vertical"){
+
+        this._showPage(null, oldButton);
+        if(oldButton[0] == tappedButton && orientation == "vertical"){
 
           return;
         };
-        oldButton.removeClass(this.getCssPrefix() + "-button-active");
-        if(orientation == "vertical"){
+      };
+      var newButton;
+      var buttons = this.find("> ul > ." + this.getCssPrefix() + "-button")._forEachElementWrapped(function(button){
 
-          this._showPage(null, oldButton);
-          if(oldButton[0] == tappedButton && orientation == "vertical"){
+        if(tappedButton === button[0]){
 
-            return;
-          };
+          newButton = button;
         };
-        var newButton;
-        var buttons = tabs.find("> ul > ." + this.getCssPrefix() + "-button")._forEachElementWrapped(function(button){
-
-          if(tappedButton === button[0]){
-
-            newButton = button;
-          };
-        });
-        tabs._showPage(newButton, oldButton);
-        newButton.addClass(this.getCssPrefix() + "-button-active");
-        var index = buttons.indexOf(newButton[0]);
-        if(this.getConfig("align") == "right"){
-
-          index = buttons.length - 1 - index;
-        };
-        tabs.emit("changeSelected", index);
       });
+      this._showPage(newButton, oldButton);
+      newButton.addClass(this.getCssPrefix() + "-button-active");
+      var index = buttons.indexOf(newButton[0]);
+      if(this.getConfig("align") == "right"){
+
+        index = buttons.length - 1 - index;
+      };
+      this.emit("changeSelected", index);
     },
     _onKeyDown : function(e){
 
@@ -98705,7 +98918,7 @@ qx.Bootstrap.define("qx.ui.website.Tabs", {
 
         pageSelector = button.getData(this.getCssPrefix() + "-page");
       };
-      return qxWeb(pageSelector);
+      return this.find(pageSelector);
     },
     _applyAlignment : function(tabs){
 
@@ -98736,7 +98949,7 @@ qx.Bootstrap.define("qx.ui.website.Tabs", {
         };
       } else {
 
-        tabs.addClass("qx-flex-ready").find("> ul").addClass("qx-hbox");
+        tabs.find("> ul").addClass("qx-hbox");
         if(align == "justify"){
 
           buttons.addClass("qx-flex1");
@@ -98794,13 +99007,11 @@ qx.Bootstrap.define("qx.ui.website.Tabs", {
     },
     dispose : function(){
 
+      this.__mediaQueryListener = undefined;
       var cssPrefix = this.getCssPrefix();
-      this._forEachElementWrapped(function(tabs){
-
-        qxWeb(window).off("resize", tabs._onResize, tabs);
-        tabs.find("> ul > ." + this.getCssPrefix() + "-button").$offFirstCollection("tap", tabs._onTap, tabs);
-        tabs.getChildren("ul").getFirst().$offFirstCollection("keydown", tabs._onKeyDown, tabs).setHtml("");
-      });
+      qxWeb(window).off("resize", this._onResize, this);
+      this.find("> ul > ." + this.getCssPrefix() + "-button").off("tap", this._onTap, this);
+      this.getChildren("ul").getFirst().off("keydown", this._onKeyDown, this).setHtml("");
       this.setHtml("").removeClasses([cssPrefix, "qx-flex-ready"]);
       return this.base(arguments);
     }
@@ -98832,21 +99043,16 @@ qx.Bootstrap.define("qx.module.util.Object", {
   },
   defer : function(statics){
 
-    qxWeb.$attachStatic({
-      "object" : {
-        "clone" : statics.clone,
-        "getValues" : statics.getValues,
-        "invert" : statics.invert,
-        "contains" : statics.contains,
-        "merge" : statics.merge
-      }
-    });
+    qxWeb.$attachAll(this, "object");
   }
 });
 
 qx.Bootstrap.define("qx.ui.website.Accordion", {
   extend : qx.ui.website.Tabs,
   statics : {
+    _templates : {
+      button : "<li><button>{{{content}}}</button></li>"
+    },
     accordion : function(preselected){
 
       var accordion = new qx.ui.website.Accordion(this);
@@ -99942,10 +100148,90 @@ qx.Mixin.define("qx.ui.mobile.container.MIScroll", {
 
 qx.Bootstrap.define("qx.module.Manipulating", {
   statics : {
+    _animationDescription : {
+      scrollLeft : {
+        duration : 700,
+        timing : "ease-in",
+        keep : 100,
+        keyFrames : {
+          '0' : {
+          },
+          '100' : {
+            scrollLeft : 1
+          }
+        }
+      },
+      scrollTop : {
+        duration : 700,
+        timing : "ease-in",
+        keep : 100,
+        keyFrames : {
+          '0' : {
+          },
+          '100' : {
+            scrollTop : 1
+          }
+        }
+      }
+    },
+    __animateScroll : function(property, value, duration){
+
+      var desc = qx.lang.Object.clone(qx.module.Manipulating._animationDescription[property], true);
+      desc.keyFrames[100][property] = value;
+      return this.animate(desc, duration);
+    },
+    __getCollectionFromArgument : function(arg){
+
+      var coll;
+      if(qx.lang.Type.isArray(arg)){
+
+        coll = qxWeb(arg);
+      } else {
+
+        var arr = qx.bom.Html.clean([arg]);
+        if(arr.length > 0 && qx.dom.Node.isElement(arr[0])){
+
+          coll = qxWeb(arr);
+        } else {
+
+          coll = qxWeb(arg);
+        };
+      };
+      return coll;
+    },
+    __getInnermostElement : function(element){
+
+      if(element.childNodes.length == 0){
+
+        return element;
+      };
+      for(var i = 0,l = element.childNodes.length;i < l;i++){
+
+        if(element.childNodes[i].nodeType === 1){
+
+          return this.__getInnermostElement(element.childNodes[i]);
+        };
+      };
+      return element;
+    },
+    __getElementArray : function(arg){
+
+      if(!qx.lang.Type.isArray(arg)){
+
+        var fromSelector = qxWeb(arg);
+        arg = fromSelector.length > 0 ? fromSelector : [arg];
+      };
+      return arg.filter(function(item){
+
+        return (item && (item.nodeType === 1 || item.nodeType === 11));
+      });
+    },
     create : function(html, context){
 
       return qxWeb.$init(qx.bom.Html.clean([html], context), qxWeb);
-    },
+    }
+  },
+  members : {
     clone : function(events){
 
       var clones = [];
@@ -100039,18 +100325,6 @@ qx.Bootstrap.define("qx.module.Manipulating", {
       };
       return this;
     },
-    __getElementArray : function(arg){
-
-      if(!qx.lang.Type.isArray(arg)){
-
-        var fromSelector = qxWeb(arg);
-        arg = fromSelector.length > 0 ? fromSelector : [arg];
-      };
-      return arg.filter(function(item){
-
-        return (item && (item.nodeType === 1 || item.nodeType === 11));
-      });
-    },
     wrap : function(wrapper){
 
       wrapper = qx.module.Manipulating.__getCollectionFromArgument(wrapper);
@@ -100066,40 +100340,6 @@ qx.Bootstrap.define("qx.module.Manipulating", {
         qx.dom.Element.insertEnd(item, innermost);
       });
       return this;
-    },
-    __getCollectionFromArgument : function(arg){
-
-      var coll;
-      if(qx.lang.Type.isArray(arg)){
-
-        coll = qxWeb(arg);
-      } else {
-
-        var arr = qx.bom.Html.clean([arg]);
-        if(arr.length > 0 && qx.dom.Node.isElement(arr[0])){
-
-          coll = qxWeb(arr);
-        } else {
-
-          coll = qxWeb(arg);
-        };
-      };
-      return coll;
-    },
-    __getInnermostElement : function(element){
-
-      if(element.childNodes.length == 0){
-
-        return element;
-      };
-      for(var i = 0,l = element.childNodes.length;i < l;i++){
-
-        if(element.childNodes[i].nodeType === 1){
-
-          return this.__getInnermostElement(element.childNodes[i]);
-        };
-      };
-      return element;
     },
     remove : function(){
 
@@ -100200,38 +100440,6 @@ qx.Bootstrap.define("qx.module.Manipulating", {
       };
       return obj.scrollTop;
     },
-    _animationDescription : {
-      scrollLeft : {
-        duration : 700,
-        timing : "ease-in",
-        keep : 100,
-        keyFrames : {
-          '0' : {
-          },
-          '100' : {
-            scrollLeft : 1
-          }
-        }
-      },
-      scrollTop : {
-        duration : 700,
-        timing : "ease-in",
-        keep : 100,
-        keyFrames : {
-          '0' : {
-          },
-          '100' : {
-            scrollTop : 1
-          }
-        }
-      }
-    },
-    __animateScroll : function(property, value, duration){
-
-      var desc = qx.lang.Object.clone(qx.module.Manipulating._animationDescription[property], true);
-      desc.keyFrames[100][property] = value;
-      return this.animate(desc, duration);
-    },
     setScrollLeft : function(value, duration){
 
       var Node = qx.dom.Node;
@@ -100308,27 +100516,7 @@ qx.Bootstrap.define("qx.module.Manipulating", {
   },
   defer : function(statics){
 
-    qxWeb.$attachStatic({
-      "create" : statics.create
-    });
-    qxWeb.$attach({
-      "append" : statics.append,
-      "appendTo" : statics.appendTo,
-      "remove" : statics.remove,
-      "empty" : statics.empty,
-      "before" : statics.before,
-      "insertBefore" : statics.insertBefore,
-      "after" : statics.after,
-      "insertAfter" : statics.insertAfter,
-      "wrap" : statics.wrap,
-      "clone" : statics.clone,
-      "getScrollLeft" : statics.getScrollLeft,
-      "setScrollLeft" : statics.setScrollLeft,
-      "getScrollTop" : statics.getScrollTop,
-      "setScrollTop" : statics.setScrollTop,
-      "focus" : statics.focus,
-      "blur" : statics.blur
-    });
+    qxWeb.$attachAll(this);
   }
 });
 
@@ -100780,11 +100968,13 @@ qx.Class.define("qx.ui.mobile.container.Scroll", {
 
       this._calculatedWaypointsX = [];
       this._calculatedWaypointsY = [];
-      this._calcWaypoints(this._waypointsX, this._calculatedWaypointsX, this.getScrollWidth());
+      this._calcWaypoints(this._waypointsX, this._calculatedWaypointsX, this.getScrollWidth(), "x");
       this._calcWaypoints(this._waypointsY, this._calculatedWaypointsY, this.getScrollHeight());
     },
-    _calcWaypoints : function(waypoints, results, scrollSize){
+    _calcWaypoints : function(waypoints, results, scrollSize, axis){
 
+      axis = axis || "y";
+      var offset = 0;
       for(var i = 0;i < waypoints.length;i++){
 
         var waypoint = waypoints[i];
@@ -100792,12 +100982,13 @@ qx.Class.define("qx.ui.mobile.container.Scroll", {
 
           if(qx.lang.String.endsWith(waypoint, "%")){
 
-            var offset = parseInt(waypoint, 10) * (scrollSize / 100);
+            offset = parseInt(waypoint, 10) * (scrollSize / 100);
             results.push({
               "offset" : offset,
               "input" : waypoint,
               "index" : i,
-              "element" : null
+              "element" : null,
+              "axis" : axis
             });
           } else {
 
@@ -100806,11 +100997,19 @@ qx.Class.define("qx.ui.mobile.container.Scroll", {
             for(var j = 0;j < waypointElements.length;j++){
 
               var position = qx.bom.element.Location.getRelative(waypointElements[j], element);
+              if(axis === "y"){
+
+                offset = position.top + this.getContentElement().scrollTop;
+              } else if(axis === "x"){
+
+                offset = position.left + this.getContentElement().scrollLeft;
+              };
               results.push({
                 "offset" : position.top + this._currentY,
                 "input" : waypoint,
                 "index" : i,
-                "element" : j
+                "element" : j,
+                "axis" : axis
               });
             };
           };
@@ -100820,7 +101019,8 @@ qx.Class.define("qx.ui.mobile.container.Scroll", {
             "offset" : waypoint,
             "input" : waypoint,
             "index" : i,
-            "element" : null
+            "element" : null,
+            "axis" : axis
           });
         };
       };
@@ -101950,6 +102150,10 @@ qx.Class.define("qx.ui.mobile.form.TextField", {
 
     this.base(arguments);
     this.addListener("keypress", this._onKeyPress, this);
+    if(qx.core.Environment.get("os.name") == "ios"){
+
+      this.addListener("disappear", this.blur, this);
+    };
   },
   properties : {
     defaultCssClass : {
@@ -101973,6 +102177,10 @@ qx.Class.define("qx.ui.mobile.form.TextField", {
   destruct : function(){
 
     this.removeListener("keypress", this._onKeyPress, this);
+    if(qx.core.Environment.get("os.name") == "ios"){
+
+      this.removeListener("disappear", this.blur, this);
+    };
   }
 });
 
@@ -101990,17 +102198,17 @@ qx.Class.define("qx.ui.mobile.form.NumberField", {
       init : "number-field"
     },
     minimum : {
-      check : "Integer",
+      check : "Number",
       init : '',
       apply : "_onChangeMinimum"
     },
     maximum : {
-      check : "Integer",
+      check : "Number",
       init : '',
       apply : "_onChangeMaximum"
     },
     step : {
-      check : "Integer",
+      check : "Number",
       init : '',
       apply : "_onChangeStep"
     }
@@ -102968,423 +103176,6 @@ qx.Class.define("qx.ui.mobile.form.renderer.SinglePlaceholder", {
         };
       };
     }
-  }
-});
-
-qx.Class.define("qx.ui.mobile.dialog.Picker", {
-  extend : qx.ui.mobile.dialog.Popup,
-  construct : function(anchor){
-
-    if(qx.core.Environment.get("qx.debug")){
-
-      qx.log.Logger.deprecatedClassWarning(this, "Please use 'qx.ui.mobile.control.Picker' instead.");
-    };
-    this.__selectedIndex = {
-    };
-    this.__targetIndex = {
-    };
-    this.__modelToSlotMap = {
-    };
-    this.__slotElements = [];
-    this.__selectedIndexBySlot = [];
-    this.__pickerModel = new qx.data.Array();
-    this.__pickerContainer = new qx.ui.mobile.container.Composite(new qx.ui.mobile.layout.HBox());
-    this.__pickerContainer.addCssClass("picker-container");
-    this.__pickerContainer.addCssClass("gap");
-    this.__pickerContainer.addCssClass("css-pointer-" + qx.core.Environment.get("css.pointerevents"));
-    this.__pickerContent = new qx.ui.mobile.container.Composite(new qx.ui.mobile.layout.VBox());
-    this.__pickerConfirmButton = new qx.ui.mobile.form.Button("Choose");
-    this.__pickerConfirmButton.addListener("tap", this.confirm, this);
-    this.__pickerCancelButton = new qx.ui.mobile.form.Button("Cancel");
-    this.__pickerCancelButton.addListener("tap", this.hide, this);
-    this.__pickerButtonContainer = new qx.ui.mobile.container.Composite(new qx.ui.mobile.layout.HBox());
-    this.__pickerButtonContainer.add(this.__pickerConfirmButton);
-    this.__pickerButtonContainer.add(this.__pickerCancelButton);
-    this.__pickerButtonContainer.addCssClass("gap");
-    this.__pickerContent.add(this.__pickerContainer);
-    this.__pickerContent.add(this.__pickerButtonContainer);
-    if(anchor){
-
-      this.setModal(false);
-    } else {
-
-      this.setModal(true);
-    };
-    this.base(arguments, this.__pickerContent, anchor);
-  },
-  events : {
-    changeSelection : "qx.event.type.Data",
-    confirmSelection : "qx.event.type.Data"
-  },
-  properties : {
-    defaultCssClass : {
-      refine : true,
-      init : "picker-dialog"
-    }
-  },
-  members : {
-    __pickerModel : null,
-    __pickerConfirmButton : null,
-    __pickerCancelButton : null,
-    __pickerContainer : null,
-    __pickerButtonContainer : null,
-    __pickerContent : null,
-    __selectedIndex : null,
-    __targetIndex : null,
-    __modelToSlotMap : null,
-    __slotElements : null,
-    __selectedIndexBySlot : null,
-    __labelHeight : null,
-    show : function(){
-
-      this.base(arguments);
-      this._updateAllSlots();
-    },
-    confirm : function(){
-
-      this.hide();
-      this._fireConfirmSelection();
-    },
-    getSelectedIndex : function(slotIndex){
-
-      var slotElement = this.__slotElements[slotIndex];
-      if(slotElement){
-
-        return this.__selectedIndexBySlot[slotIndex];
-      };
-      return null;
-    },
-    setSelectedIndex : function(slotIndex, value, useTransition){
-
-      var slotElement = this.__slotElements[slotIndex];
-      if(slotElement){
-
-        if(this._isSelectedIndexValid(slotElement, value)){
-
-          this.__selectedIndex[slotElement.id] = value;
-          this.__selectedIndexBySlot[slotIndex] = value;
-          if(this.isShown()){
-
-            this._updateSlot(slotElement, useTransition);
-          };
-        };
-      };
-    },
-    setConfirmButtonCaption : function(caption){
-
-      if(this.__pickerConfirmButton){
-
-        this.__pickerConfirmButton.setValue(caption);
-      };
-    },
-    setCancelButtonCaption : function(caption){
-
-      if(this.__pickerCancelButton){
-
-        this.__pickerCancelButton.setValue(caption);
-      };
-    },
-    getPickerButtonContainer : function(){
-
-      return this.__pickerButtonContainer;
-    },
-    addSlot : function(slotData){
-
-      if(slotData !== null && slotData instanceof qx.data.Array){
-
-        this.__pickerModel.push(slotData);
-        slotData.addListener("changeBubble", this._onChangeBubble, {
-          self : this,
-          index : this.__pickerModel.length - 1
-        });
-        this._render();
-      };
-    },
-    _onChangeBubble : function(evt){
-
-      var newSlotDataLength = evt.getData().value.length;
-      var selectedIndex = this.self.getSelectedIndex(this.index);
-      var pickerSlot = this.self.__pickerContainer.getChildren()[this.index];
-      this.self._renderPickerSlotContent(pickerSlot, this.index);
-      if(selectedIndex >= newSlotDataLength){
-
-        var newSelectedIndex = newSlotDataLength - 1;
-        this.self.setSelectedIndex(this.index, newSelectedIndex, false);
-      };
-    },
-    removeSlot : function(slotIndex){
-
-      if(this.__pickerModel.getLength() > slotIndex && slotIndex > -1){
-
-        var slotData = this.__pickerModel.getItem(slotIndex);
-        slotData.removeListener("changeBubble", this._onChangeBubble, this);
-        this.__pickerModel.removeAt(slotIndex);
-        this._render();
-      };
-    },
-    _disposePickerModel : function(){
-
-      for(var i = 0;i < this.__pickerModel.length;i++){
-
-        var slotData = this.__pickerModel.getItem(i);
-        slotData.removeListener("changeBubble", this._onChangeBubble, this);
-      };
-      this.__pickerModel.dispose();
-    },
-    getSlotCount : function(){
-
-      return this.__pickerModel.getLength();
-    },
-    _increaseSelectedIndex : function(contentElement){
-
-      var oldSelectedIndex = this.__selectedIndex[contentElement.id];
-      var newSelectedIndex = oldSelectedIndex + 1;
-      var slotIndex = this._getSlotIndexByElement(contentElement);
-      var model = this._getModelByElement(contentElement);
-      if(model.getLength() == newSelectedIndex){
-
-        newSelectedIndex = model.getLength() - 1;
-      };
-      this.__selectedIndex[contentElement.id] = newSelectedIndex;
-      this.__selectedIndexBySlot[slotIndex] = newSelectedIndex;
-      this._updateSlot(contentElement);
-    },
-    _decreaseSelectedIndex : function(contentElement){
-
-      var oldSelectedIndex = this.__selectedIndex[contentElement.id];
-      var newSelectedIndex = oldSelectedIndex - 1;
-      var slotIndex = this._getSlotIndexByElement(contentElement);
-      if(newSelectedIndex < 0){
-
-        newSelectedIndex = 0;
-      };
-      this.__selectedIndex[contentElement.id] = newSelectedIndex;
-      this.__selectedIndexBySlot[slotIndex] = newSelectedIndex;
-      this._updateSlot(contentElement);
-    },
-    _getSlotIndexByElement : function(contentElement){
-
-      var contentElementId = contentElement.id;
-      var slotIndex = this.__modelToSlotMap[contentElementId];
-      return slotIndex;
-    },
-    _isSelectedIndexValid : function(contentElement, selectedIndex){
-
-      var modelLength = this._getModelByElement(contentElement).getLength();
-      return (selectedIndex < modelLength && selectedIndex >= 0);
-    },
-    _getModelByElement : function(contentElement){
-
-      var slotIndex = this._getSlotIndexByElement(contentElement);
-      return this.__pickerModel.getItem(slotIndex);
-    },
-    _fireConfirmSelection : function(){
-
-      var model = this.__pickerModel;
-      var slotCounter = (model ? model.getLength() : 0);
-      var selectionData = [];
-      for(var slotIndex = 0;slotIndex < slotCounter;slotIndex++){
-
-        var selectedIndex = this.__selectedIndexBySlot[slotIndex];
-        var selectedValue = model.getItem(slotIndex).getItem(selectedIndex);
-        var slotData = {
-          index : selectedIndex,
-          item : selectedValue,
-          slot : slotIndex
-        };
-        selectionData.push(slotData);
-      };
-      this.fireDataEvent("confirmSelection", selectionData);
-    },
-    _fixPickerSlotHeight : function(target){
-
-      this.__labelHeight = qx.bom.element.Style.get(target.children[0], "height", 1);
-      this.__labelHeight = parseFloat(this.__labelHeight, 10);
-      var labelCount = this._getModelByElement(target).length;
-      var pickerSlotHeight = labelCount * this.__labelHeight;
-      qx.bom.element.Style.set(target, "height", pickerSlotHeight + "px");
-    },
-    _onTrackStart : function(evt){
-
-      var target = evt.getCurrentTarget().getContainerElement();
-      this.__targetIndex[target.id] = this.__selectedIndex[target.id];
-      qx.bom.element.Style.set(target, "transitionDuration", "0s");
-      this._fixPickerSlotHeight(target);
-      evt.preventDefault();
-    },
-    _onTrackEnd : function(evt){
-
-      var target = evt.getCurrentTarget().getContainerElement();
-      var model = this._getModelByElement(target);
-      var slotIndex = this._getSlotIndexByElement(target);
-      var isSwipe = Math.abs(evt.getDelta().y) >= this.__labelHeight / 2;
-      if(isSwipe){
-
-        this.__selectedIndex[target.id] = this.__targetIndex[target.id];
-        this.__selectedIndexBySlot[slotIndex] = this.__targetIndex[target.id];
-      } else {
-
-        var viewportTop = evt.getViewportTop();
-        var offsetParent = qx.bom.element.Location.getOffsetParent(target);
-        var targetTop = qx.bom.element.Location.getTop(offsetParent, "margin");
-        var relativeTop = viewportTop - targetTop;
-        var decreaseIncreaseLimit = offsetParent.offsetHeight / 2;
-        if(relativeTop < decreaseIncreaseLimit){
-
-          this._decreaseSelectedIndex(target);
-        } else if(relativeTop > decreaseIncreaseLimit){
-
-          this._increaseSelectedIndex(target);
-        };
-      };
-      var selectedIndex = this.__selectedIndex[target.id];
-      var selectedValue = model.getItem(selectedIndex);
-      this._updateSlot(target);
-      this.fireDataEvent("changeSelection", {
-        index : selectedIndex,
-        item : selectedValue,
-        slot : slotIndex
-      });
-    },
-    _onTrack : function(evt){
-
-      var target = evt.getCurrentTarget();
-      var targetElement = evt.getCurrentTarget().getContainerElement();
-      var deltaY = evt.getDelta().y;
-      var selectedIndex = this.__selectedIndex[targetElement.id];
-      var offsetTop = -selectedIndex * this.__labelHeight;
-      var targetOffset = evt.getDelta().y + offsetTop;
-      var slotHeight = targetElement.offsetHeight;
-      var pickerHeight = parseInt(target.getLayoutParent().getContainerElement().offsetHeight, 10);
-      var upperBounce = this.__labelHeight;
-      var lowerBounce = (-slotHeight + pickerHeight * 2);
-      if(targetOffset > upperBounce){
-
-        targetOffset = upperBounce;
-      };
-      if(targetOffset < lowerBounce){
-
-        targetOffset = lowerBounce;
-      };
-      target.setTranslateY(targetOffset);
-      var steps = Math.round(-deltaY / this.__labelHeight);
-      var newIndex = selectedIndex + steps;
-      var modelLength = this._getModelByElement(targetElement).getLength();
-      if(newIndex < modelLength && newIndex >= 0){
-
-        this.__targetIndex[targetElement.id] = newIndex;
-      };
-      evt.preventDefault();
-    },
-    _updateSlot : function(targetElement, useTransition){
-
-      this._fixPickerSlotHeight(targetElement);
-      if(typeof useTransition === undefined){
-
-        useTransition = true;
-      };
-      if(qx.core.Environment.get("os.name") == "ios"){
-
-        var transitionDuration = "200ms";
-        if(useTransition === false){
-
-          transitionDuration = "0s";
-        };
-        qx.bom.element.Style.set(targetElement, "transitionDuration", transitionDuration);
-      };
-      var selectedIndex = this.__selectedIndex[targetElement.id];
-      var offsetTop = -selectedIndex * this.__labelHeight;
-      qx.bom.element.Style.set(targetElement, "transform", "translate3d(0px," + offsetTop + "px,0px)");
-    },
-    _updateAllSlots : function(){
-
-      for(var i = 0;i < this.__slotElements.length;i++){
-
-        this._updateSlot(this.__slotElements[i]);
-      };
-    },
-    _render : function(){
-
-      this._removePickerSlots();
-      this.__selectedIndexBySlot = [];
-      this.__slotElements = [];
-      this.__modelToSlotMap = {
-      };
-      this.__selectedIndex = {
-      };
-      var slotCounter = (this.__pickerModel ? this.__pickerModel.getLength() : 0);
-      for(var slotIndex = 0;slotIndex < slotCounter;slotIndex++){
-
-        this.__selectedIndexBySlot.push(0);
-        var pickerSlot = this._createPickerSlot(slotIndex);
-        this.__slotElements.push(pickerSlot.getContentElement());
-        this.__pickerContainer.add(pickerSlot, {
-          flex : 1
-        });
-        this._renderPickerSlotContent(pickerSlot, slotIndex);
-      };
-    },
-    _renderPickerSlotContent : function(pickerSlot, slotIndex){
-
-      var oldPickerSlotContent = pickerSlot.removeAll();
-      for(var i = 0;i < oldPickerSlotContent.length;i++){
-
-        oldPickerSlotContent[i].dispose();
-      };
-      var slotValues = this.__pickerModel.getItem(slotIndex);
-      var slotLength = slotValues.getLength();
-      for(var slotValueIndex = 0;slotValueIndex < slotLength;slotValueIndex++){
-
-        var labelValue = slotValues.getItem(slotValueIndex);
-        var pickerLabel = this._createPickerValueLabel(labelValue);
-        pickerSlot.add(pickerLabel, {
-          flex : 1
-        });
-      };
-    },
-    _createPickerSlot : function(slotIndex){
-
-      var pickerSlot = new qx.ui.mobile.container.Composite();
-      pickerSlot.addCssClass("picker-slot");
-      pickerSlot.setTransformUnit("px");
-      pickerSlot.addListener("trackstart", this._onTrackStart, this);
-      pickerSlot.addListener("track", this._onTrack, this);
-      pickerSlot.addListener("trackend", this._onTrackEnd, this);
-      this.__modelToSlotMap[pickerSlot.getId()] = slotIndex;
-      this.__selectedIndex[pickerSlot.getId()] = 0;
-      return pickerSlot;
-    },
-    _removePickerSlots : function(){
-
-      var children = this.__pickerContainer.getChildren();
-      for(var i = children.length - 1;i >= 0;i--){
-
-        var pickerSlot = children[i];
-        pickerSlot.removeListener("trackstart", this._onTrackStart, this);
-        pickerSlot.removeListener("track", this._onTrack, this);
-        pickerSlot.removeListener("trackend", this._onTrackEnd, this);
-        var oldPickerSlotContent = pickerSlot.removeAll();
-        for(var j = 0;j < oldPickerSlotContent.length;j++){
-
-          oldPickerSlotContent[j].dispose();
-        };
-        pickerSlot.destroy();
-      };
-    },
-    _createPickerValueLabel : function(textValue){
-
-      var pickerLabel = new qx.ui.mobile.basic.Label(textValue);
-      pickerLabel.addCssClass("picker-label");
-      return pickerLabel;
-    }
-  },
-  destruct : function(){
-
-    this._disposePickerModel();
-    this._removePickerSlots();
-    this.__pickerConfirmButton.removeListener("tap", this.confirm, this);
-    this.__pickerCancelButton.removeListener("tap", this.hide, this);
-    this._disposeObjects("__pickerContainer", "__pickerButtonContainer", "__pickerConfirmButton", "__pickerCancelButton", "__pickerContent");
   }
 });
 
@@ -104404,6 +104195,33 @@ qx.Class.define("qx.data.controller.List", {
   }
 });
 
+qx.Class.define("qx.ui.mobile.embed.Html", {
+  extend : qx.ui.mobile.core.Widget,
+  construct : function(html){
+
+    this.base(arguments);
+    if(html){
+
+      this.setHtml(html);
+    };
+  },
+  properties : {
+    html : {
+      check : "String",
+      init : null,
+      nullable : true,
+      event : "changeHtml",
+      apply : "_applyHtml"
+    }
+  },
+  members : {
+    _applyHtml : function(value, old){
+
+      this._setHtml(value);
+    }
+  }
+});
+
 qx.Class.define("qx.log.appender.NodeConsole", {
   statics : {
     __OUT : null,
@@ -104622,7 +104440,7 @@ qx.Class.define("qx.ui.progressive.headfoot.Null", {
 });
 
 qx.Bootstrap.define("qx.module.Attribute", {
-  statics : {
+  members : {
     getHtml : function(){
 
       if(this[0] && this[0].nodeType === 1){
@@ -104759,24 +104577,97 @@ qx.Bootstrap.define("qx.module.Attribute", {
   },
   defer : function(statics){
 
-    qxWeb.$attach({
-      "getHtml" : statics.getHtml,
-      "setHtml" : statics.setHtml,
-      "getAttribute" : statics.getAttribute,
-      "setAttribute" : statics.setAttribute,
-      "removeAttribute" : statics.removeAttribute,
-      "getAttributes" : statics.getAttributes,
-      "setAttributes" : statics.setAttributes,
-      "removeAttributes" : statics.removeAttributes,
-      "getProperty" : statics.getProperty,
-      "setProperty" : statics.setProperty,
-      "removeProperty" : statics.removeProperty,
-      "getProperties" : statics.getProperties,
-      "setProperties" : statics.setProperties,
-      "removeProperties" : statics.removeProperties,
-      "getValue" : statics.getValue,
-      "setValue" : statics.setValue
+    qxWeb.$attachAll(this);
+  }
+});
+
+qx.Bootstrap.define("qx.bom.FullScreen", {
+  extend : qx.event.Emitter,
+  statics : {
+    getInstance : function(){
+
+      if(!this.$$instance){
+
+        this.$$instance = new qx.bom.FullScreen();
+      };
+      return this.$$instance;
+    }
+  },
+  construct : function(element){
+
+    this.__doc = element || window.document;
+    this.__checkAttributeNames();
+    var self = this;
+    qx.bom.Event.addNativeListener(this.__doc, this.__eventName, function(e){
+
+      self.emit("change", e);
     });
+  },
+  events : {
+    "change" : "Event"
+  },
+  members : {
+    __doc : null,
+    __fullscreenElementAttr : "fullscreenElement",
+    __requestMethodName : "requestFullscreen",
+    __cancelMethodName : "cancelFullscreen",
+    __eventName : "fullscreenchange",
+    __checkAttributeNames : function(){
+
+      var prefix = qx.bom.Style.VENDOR_PREFIXES;
+      for(var i = 0;i < prefix.length;i++){
+
+        var pfix = prefix[i].toLowerCase();
+        if(this.__doc[pfix + "FullScreenElement"] !== undefined || this.__doc[pfix + "FullscreenElement"] !== undefined){
+
+          this.__eventName = pfix + "fullscreenchange";
+          if(pfix == "moz"){
+
+            this.__fullscreenElementAttr = pfix + "FullScreenElement";
+            this.__requestMethodName = pfix + "RequestFullScreen";
+          } else {
+
+            this.__fullscreenElementAttr = pfix + "FullscreenElement";
+            this.__requestMethodName = pfix + "RequestFullscreen";
+          };
+          break;
+        };
+      };
+      if(this.__doc[pfix + "CancelFullScreen"]){
+
+        this.__cancelMethodName = pfix + "CancelFullScreen";
+      } else if(this.__doc[pfix + "CancelFullscreen"]){
+
+        this.__cancelMethodName = pfix + "CancelFullscreen";
+      } else if(this.__doc[pfix + "ExitFullScreen"]){
+
+        this.__cancelMethodName = pfix + "ExitFullScreen";
+      } else if(this.__doc[pfix + "ExitFullscreen"]){
+
+        this.__cancelMethodName = pfix + "ExitFullscreen";
+      } else if(this.__doc["exitFullscreen"]){
+
+        this.__cancelMethodName = "exitFullscreen";
+      };;;;
+    },
+    isFullScreen : function(){
+
+      return this.__doc[this.__fullscreenElementAttr] !== undefined ? !!this.__doc[this.__fullscreenElementAttr] : false;
+    },
+    request : function(){
+
+      if(this.__doc.documentElement[this.__requestMethodName]){
+
+        this.__doc.documentElement[this.__requestMethodName]();
+      };
+    },
+    cancel : function(){
+
+      if(this.__doc[this.__cancelMethodName]){
+
+        this.__doc[this.__cancelMethodName]();
+      };
+    }
   }
 });
 
@@ -107159,7 +107050,7 @@ qx.Class.define("qx.ui.mobile.toolbar.Button", {
 });
 
 qx.Bootstrap.define("qx.module.Transform", {
-  statics : {
+  members : {
     transform : function(transforms){
 
       this._forEachElement(function(el){
@@ -107275,23 +107166,7 @@ qx.Bootstrap.define("qx.module.Transform", {
   },
   defer : function(statics){
 
-    qxWeb.$attach({
-      "transform" : statics.transform,
-      "translate" : statics.translate,
-      "rotate" : statics.rotate,
-      "skew" : statics.skew,
-      "scale" : statics.scale,
-      "setTransformStyle" : statics.setTransformStyle,
-      "getTransformStyle" : statics.getTransformStyle,
-      "setTransformOrigin" : statics.setTransformOrigin,
-      "getTransformOrigin" : statics.getTransformOrigin,
-      "setTransformPerspective" : statics.setTransformPerspective,
-      "getTransformPerspective" : statics.getTransformPerspective,
-      "setTransformPerspectiveOrigin" : statics.setTransformPerspectiveOrigin,
-      "getTransformPerspectiveOrigin" : statics.getTransformPerspectiveOrigin,
-      "setTransformBackfaceVisibility" : statics.setTransformBackfaceVisibility,
-      "getTransformBackfaceVisibility" : statics.getTransformBackfaceVisibility
-    });
+    qxWeb.$attachAll(this);
   }
 });
 
@@ -107335,6 +107210,7 @@ qx.Bootstrap.define("qx.ui.website.Slider", {
   },
   members : {
     __dragMode : null,
+    _value : 0,
     init : function(){
 
       if(!this.base(arguments)){
@@ -107346,28 +107222,25 @@ qx.Bootstrap.define("qx.ui.website.Slider", {
 
         var step = this.getConfig("step");
         var defaultVal = qxWeb.type.get(step) == "Array" ? step[0] : this.getConfig("minimum");
-        this.setProperty("value", defaultVal);
+        this._value = defaultVal;
       };
-      this._forEachElementWrapped(function(slider){
+      this.on("pointerup", this._onSliderPointerUp, this).on("focus", this._onSliderFocus, this).setStyle("touch-action", "pan-y");
+      qxWeb(document).on("pointerup", this._onDocPointerUp, this);
+      qxWeb(window).on("resize", this._onWindowResize, this);
+      if(this.getChildren("." + cssPrefix + "-knob").length === 0){
 
-        slider.$onFirstCollection("pointerup", slider._onSliderPointerUp, slider).$onFirstCollection("focus", slider._onSliderFocus, slider).setStyle("touch-action", "pan-y");
-        qxWeb(document).on("pointerup", slider._onDocPointerUp, slider);
-        qxWeb(window).$onFirstCollection("resize", slider._onWindowResize, slider);
-        if(slider.getChildren("." + cssPrefix + "-knob").length === 0){
-
-          slider.append(qx.ui.website.Widget.create("<button>").addClass(cssPrefix + "-knob"));
-        };
-        slider.getChildren("." + cssPrefix + "-knob").setAttributes({
-          "draggable" : "false",
-          "unselectable" : "true"
-        }).setHtml(slider._getKnobContent()).$onFirstCollection("pointerdown", slider._onPointerDown, slider).$onFirstCollection("dragstart", slider._onDragStart, slider).$onFirstCollection("focus", slider._onKnobFocus, slider).$onFirstCollection("blur", slider._onKnobBlur, slider);
-        slider.render();
-      });
+        this.append(qx.ui.website.Widget.create("<button>").addClass(cssPrefix + "-knob"));
+      };
+      this.getChildren("." + cssPrefix + "-knob").setAttributes({
+        "draggable" : "false",
+        "unselectable" : "true"
+      }).setHtml(this._getKnobContent()).on("pointerdown", this._onPointerDown, this).on("dragstart", this._onDragStart, this).on("focus", this._onKnobFocus, this).on("blur", this._onKnobBlur, this);
+      this.render();
       return true;
     },
     getValue : function(){
 
-      return this.getProperty("value");
+      return this._value;
     },
     setValue : function(value){
 
@@ -107393,7 +107266,7 @@ qx.Bootstrap.define("qx.ui.website.Slider", {
           value = Math.round(value / step) * step;
         };
       };
-      this.setProperty("value", value);
+      this._value = value;
       if(qxWeb.type.get(step) != "Array" || step.indexOf(value) != -1){
 
         this.__valueToPosition(value);
@@ -107573,11 +107446,11 @@ qx.Bootstrap.define("qx.ui.website.Slider", {
     },
     _onKnobFocus : function(e){
 
-      this.getChildren("." + this.getCssPrefix() + "-knob").$onFirstCollection("keydown", this._onKeyDown, this);
+      this.getChildren("." + this.getCssPrefix() + "-knob").on("keydown", this._onKeyDown, this);
     },
     _onKnobBlur : function(e){
 
-      this.getChildren("." + this.getCssPrefix() + "-knob").$offFirstCollection("keydown", this._onKeyDown, this);
+      this.getChildren("." + this.getCssPrefix() + "-knob").off("keydown", this._onKeyDown, this);
     },
     _onKeyDown : function(e){
 
@@ -107638,12 +107511,11 @@ qx.Bootstrap.define("qx.ui.website.Slider", {
     },
     _onWindowResize : function(){
 
-      var value = this.getProperty("value");
       if(qxWeb.type.get(this.getConfig("step")) == "Array"){
 
         this._getPixels();
       };
-      this.__valueToPosition(value);
+      this.__valueToPosition(this._value);
     },
     __valueToPosition : function(value){
 
@@ -107667,13 +107539,10 @@ qx.Bootstrap.define("qx.ui.website.Slider", {
     },
     dispose : function(){
 
-      this._forEachElementWrapped(function(slider){
-
-        qxWeb(document).off("pointerup", slider._onDocPointerUp, slider);
-        qxWeb(window).$offFirstCollection("resize", slider._onWindowResize, slider);
-        slider.$offFirstCollection("pointerup", slider._onSliderPointerUp, slider).$offFirstCollection("focus", slider._onSliderFocus, slider);
-        slider.getChildren("." + this.getCssPrefix() + "-knob").$offFirstCollection("pointerdown", slider._onPointerDown, slider).$offFirstCollection("dragstart", slider._onDragStart, slider).$offFirstCollection("focus", slider._onKnobFocus, slider).$offFirstCollection("blur", slider._onKnobBlur, slider).$offFirstCollection("keydown", slider._onKeyDown, slider);
-      });
+      qxWeb(document).off("pointerup", this._onDocPointerUp, this);
+      qxWeb(window).off("resize", this._onWindowResize, this);
+      this.off("pointerup", this._onSliderPointerUp, this).off("focus", this._onSliderFocus, this);
+      this.getChildren("." + this.getCssPrefix() + "-knob").off("pointerdown", this._onPointerDown, this).off("dragstart", this._onDragStart, this).off("focus", this._onKnobFocus, this).off("blur", this._onKnobBlur, this).off("keydown", this._onKeyDown, this);
       this.setHtml("");
       return this.base(arguments);
     }
@@ -108711,201 +108580,6 @@ qx.Class.define("qx.io.remote.RequestQueue", {
   }
 });
 
-qx.Class.define("qx.ui.table.cellrenderer.Conditional", {
-  extend : qx.ui.table.cellrenderer.Default,
-  construct : function(align, color, style, weight){
-
-    this.base(arguments);
-    this.numericAllowed = ["==", "!=", ">", "<", ">=", "<="];
-    this.betweenAllowed = ["between", "!between"];
-    this.conditions = [];
-    this.__defaultTextAlign = align || "";
-    this.__defaultColor = color || "";
-    this.__defaultFontStyle = style || "";
-    this.__defaultFontWeight = weight || "";
-  },
-  members : {
-    __defaultTextAlign : null,
-    __defaultColor : null,
-    __defaultFontStyle : null,
-    __defaultFontWeight : null,
-    __applyFormatting : function(condition, style){
-
-      if(condition[1] != null){
-
-        style["text-align"] = condition[1];
-      };
-      if(condition[2] != null){
-
-        style["color"] = condition[2];
-      };
-      if(condition[3] != null){
-
-        style["font-style"] = condition[3];
-      };
-      if(condition[4] != null){
-
-        style["font-weight"] = condition[4];
-      };
-    },
-    addNumericCondition : function(condition, value1, align, color, style, weight, target){
-
-      var temp = null;
-      if(qx.lang.Array.contains(this.numericAllowed, condition)){
-
-        if(value1 != null){
-
-          temp = [condition, align, color, style, weight, value1, target];
-        };
-      };
-      if(temp != null){
-
-        this.conditions.push(temp);
-      } else {
-
-        throw new Error("Condition not recognized or value is null!");
-      };
-    },
-    addBetweenCondition : function(condition, value1, value2, align, color, style, weight, target){
-
-      if(qx.lang.Array.contains(this.betweenAllowed, condition)){
-
-        if(value1 != null && value2 != null){
-
-          var temp = [condition, align, color, style, weight, value1, value2, target];
-        };
-      };
-      if(temp != null){
-
-        this.conditions.push(temp);
-      } else {
-
-        throw new Error("Condition not recognized or value1/value2 is null!");
-      };
-    },
-    addRegex : function(regex, align, color, style, weight, target){
-
-      if(regex != null){
-
-        var temp = ["regex", align, color, style, weight, regex, target];
-      };
-      if(temp != null){
-
-        this.conditions.push(temp);
-      } else {
-
-        throw new Error("regex cannot be null!");
-      };
-    },
-    _getCellStyle : function(cellInfo){
-
-      var tableModel = cellInfo.table.getTableModel();
-      var i;
-      var cond_test;
-      var compareValue;
-      var style = {
-        "text-align" : this.__defaultTextAlign,
-        "color" : this.__defaultColor,
-        "font-style" : this.__defaultFontStyle,
-        "font-weight" : this.__defaultFontWeight
-      };
-      for(i in this.conditions){
-
-        cond_test = false;
-        if(qx.lang.Array.contains(this.numericAllowed, this.conditions[i][0])){
-
-          if(this.conditions[i][6] == null){
-
-            compareValue = cellInfo.value;
-          } else {
-
-            compareValue = tableModel.getValueById(this.conditions[i][6], cellInfo.row);
-          };
-          switch(this.conditions[i][0]){case "==":
-          if(compareValue == this.conditions[i][5]){
-
-            cond_test = true;
-          };
-          break;case "!=":
-          if(compareValue != this.conditions[i][5]){
-
-            cond_test = true;
-          };
-          break;case ">":
-          if(compareValue > this.conditions[i][5]){
-
-            cond_test = true;
-          };
-          break;case "<":
-          if(compareValue < this.conditions[i][5]){
-
-            cond_test = true;
-          };
-          break;case ">=":
-          if(compareValue >= this.conditions[i][5]){
-
-            cond_test = true;
-          };
-          break;case "<=":
-          if(compareValue <= this.conditions[i][5]){
-
-            cond_test = true;
-          };
-          break;};
-        } else if(qx.lang.Array.contains(this.betweenAllowed, this.conditions[i][0])){
-
-          if(this.conditions[i][7] == null){
-
-            compareValue = cellInfo.value;
-          } else {
-
-            compareValue = tableModel.getValueById(this.conditions[i][7], cellInfo.row);
-          };
-          switch(this.conditions[i][0]){case "between":
-          if(compareValue >= this.conditions[i][5] && compareValue <= this.conditions[i][6]){
-
-            cond_test = true;
-          };
-          break;case "!between":
-          if(compareValue < this.conditions[i][5] || compareValue > this.conditions[i][6]){
-
-            cond_test = true;
-          };
-          break;};
-        } else if(this.conditions[i][0] == "regex"){
-
-          if(this.conditions[i][6] == null){
-
-            compareValue = cellInfo.value;
-          } else {
-
-            compareValue = tableModel.getValueById(this.conditions[i][6], cellInfo.row);
-          };
-          var the_pattern = new RegExp(this.conditions[i][5], 'g');
-          cond_test = the_pattern.test(compareValue);
-        };;
-        if(cond_test == true){
-
-          this.__applyFormatting(this.conditions[i], style);
-        };
-      };
-      var styleString = [];
-      for(var key in style){
-
-        if(style[key]){
-
-          styleString.push(key, ":", style[key], ";");
-        };
-      };
-      return styleString.join("");
-    }
-  },
-  destruct : function(){
-
-    this.numericAllowed = this.betweenAllowed = this.conditions = null;
-  }
-});
-
 qx.Class.define("qx.ui.table.cellrenderer.Html", {
   extend : qx.ui.table.cellrenderer.Conditional,
   members : {
@@ -109795,16 +109469,8 @@ qx.Class.define("qx.ui.mobile.layout.Card", {
       this.fireDataEvent("animationStart", [this.__currentWidget, widget]);
       var fromElement = this.__currentWidget.getContainerElement();
       var toElement = widget.getContainerElement();
-      var onAnimationEnd = qx.lang.Function.bind(this._onAnimationEnd, this);
-      if(qx.core.Environment.get("browser.name") == "iemobile" || qx.core.Environment.get("browser.name") == "ie"){
-
-        qx.bom.Event.addNativeListener(fromElement, "MSAnimationEnd", onAnimationEnd, false);
-        qx.bom.Event.addNativeListener(toElement, "MSAnimationEnd", onAnimationEnd, false);
-      } else {
-
-        qx.event.Registration.addListener(fromElement, "animationEnd", this._onAnimationEnd, this);
-        qx.event.Registration.addListener(toElement, "animationEnd", this._onAnimationEnd, this);
-      };
+      qx.event.Registration.addListener(fromElement, "animationEnd", this._onAnimationEnd, this);
+      qx.event.Registration.addListener(toElement, "animationEnd", this._onAnimationEnd, this);
       var fromCssClasses = this.__getAnimationClasses("out");
       var toCssClasses = this.__getAnimationClasses("in");
       this._widget.addCssClass("animationParent");
@@ -109826,15 +109492,8 @@ qx.Class.define("qx.ui.mobile.layout.Card", {
 
         var fromElement = this.__currentWidget.getContainerElement();
         var toElement = this.__nextWidget.getContainerElement();
-        if(qx.core.Environment.get("browser.name") == "iemobile" || qx.core.Environment.get("browser.name") == "ie"){
-
-          qx.bom.Event.removeNativeListener(fromElement, "MSAnimationEnd", this._onAnimationEnd, false);
-          qx.bom.Event.removeNativeListener(toElement, "MSAnimationEnd", this._onAnimationEnd, false);
-        } else {
-
-          qx.event.Registration.removeListener(fromElement, "animationEnd", this._onAnimationEnd, this);
-          qx.event.Registration.removeListener(toElement, "animationEnd", this._onAnimationEnd, this);
-        };
+        qx.event.Registration.removeListener(fromElement, "animationEnd", this._onAnimationEnd, this);
+        qx.event.Registration.removeListener(toElement, "animationEnd", this._onAnimationEnd, this);
         qx.bom.element.Class.removeClasses(fromElement, this.__getAnimationClasses("out"));
         qx.bom.element.Class.removeClasses(toElement, this.__getAnimationClasses("in"));
         this._swapWidget();
@@ -110037,17 +109696,14 @@ qx.Bootstrap.define("qx.ui.website.Button", {
 
         return false;
       };
-      this._forEachElementWrapped(function(button){
+      if(this.getChildren("span") == 0){
 
-        if(button.getChildren("span") == 0){
+        qxWeb.create("<span>").appendTo(this);
+      };
+      if(this.getChildren("img") == 0){
 
-          qxWeb.create("<span>").appendTo(button);
-        };
-        if(button.getChildren("img") == 0){
-
-          qxWeb.create("<img>").appendTo(button).setStyle("display", "none");
-        };
-      });
+        qxWeb.create("<img>").appendTo(this).setStyle("display", "none");
+      };
       return true;
     },
     setLabel : function(value){
@@ -111193,7 +110849,7 @@ qx.Bootstrap.define("qx.ui.website.Table", {
     table : function(model){
 
       var table = new qx.ui.website.Table(this);
-      table.setProperty("__model", model);
+      table.__model = model;
       table.init();
       return table;
     },
@@ -111239,64 +110895,64 @@ qx.Bootstrap.define("qx.ui.website.Table", {
     __descSortingClass : "qqx-table-sort-desc"
   },
   members : {
+    __model : null,
+    __columnMeta : null,
+    __sortingFunction : null,
+    __filterFunction : null,
+    __filterFunc : null,
+    __filters : null,
+    __inputName : null,
+    __hovered : null,
+    __sortingData : null,
     init : function(){
 
       if(!this.base(arguments)){
 
         return false;
       };
-      var model = this.getProperty("__model");
-      this._forEachElementWrapped(function(table){
+      var model = this.__model;
+      if(qxWeb.getNodeName(this).toUpperCase() !== "TABLE"){
 
-        if(qxWeb.getNodeName(table).toUpperCase() !== "TABLE"){
+        throw new Error("collection should contains only table elements !!");
+      };
+      if(!this[0].tHead){
 
-          throw new Error("collection should contains only table elements !!");
-        };
-        if(!table[0].tHead){
-
-          throw new Error("A Table header element is required for this widget.");
-        };
-        table.find("tbody td").addClass("qx-table-cell");
-        table.setProperty("__inputName", "input" + qx.ui.website.Table.__getUID());
-        table.__getColumnMetaData(model);
-        table.setModel(model);
-        table.setSortingFunction(table.__defaultColumnSort);
-        table.__registerEvents();
-        this.setProperty("__hovered", null);
-      }.bind(this));
+        throw new Error("A Table header element is required for this widget.");
+      };
+      this.find("tbody td").addClass("qx-table-cell");
+      this.__inputName = "input" + qx.ui.website.Table.__getUID();
+      this.__getColumnMetaData(model);
+      this.setModel(model);
+      this.setSortingFunction(this.__defaultColumnSort);
+      this.__registerEvents();
+      this.__hovered = null;
       return true;
     },
     setModel : function(model){
 
-      this._forEachElementWrapped(function(table){
+      if(typeof model != "undefined"){
 
-        if(typeof model != "undefined"){
+        if(qx.lang.Type.isArray(model)){
 
-          if(qx.lang.Type.isArray(model)){
+          this.__model = model;
+          this.emit("modelChange", model);
+        } else {
 
-            table.setProperty("__model", model);
-            table.emit("modelChange", model);
-          } else {
-
-            throw new Error("model must be an Array !!");
-          };
+          throw new Error("model must be an Array !!");
         };
-      });
+      };
       return this;
     },
     setColumnType : function(columnName, type){
 
-      this._forEachElementWrapped(function(table){
-
-        table.__checkColumnExistance(columnName);
-        table.getProperty("__columnMeta")[columnName].type = type;
-      }.bind(this));
+      this.__checkColumnExistance(columnName);
+      this.__columnMeta[columnName].type = type;
       return this;
     },
     getColumnType : function(columnName){
 
       this.eq(0).__checkColumnExistance(columnName);
-      return this.eq(0).getProperty("__columnMeta")[columnName].type;
+      return this.eq(0).__columnMeta[columnName].type;
     },
     getCell : function(row, col){
 
@@ -111309,112 +110965,85 @@ qx.Bootstrap.define("qx.ui.website.Table", {
     setCompareFunction : function(type, compareFunc){
 
       type = qxWeb.string.firstUp(type);
-      this._forEachElementWrapped(function(table){
-
-        table.setProperty("_compare" + type, compareFunc);
-      }.bind(this));
+      this.setProperty(["_compare" + type], compareFunc);
       return this;
     },
     unsetCompareFunction : function(type){
 
       type = qxWeb.string.firstUp(type);
       var compareFunc = this["_compare" + type] || this._compareString;
-      this._forEachElementWrapped(function(table){
-
-        table.setProperty("_compare" + type, compareFunc);
-      }.bind(this));
+      this.setProperty(["_compare" + type], compareFunc);
       return this;
     },
     getCompareFunction : function(type){
 
       type = qxWeb.string.firstUp(type);
-      return this.eq(0).getProperty("_compare" + type) || this["_compare" + type];
+      return this.getProperty("_compare" + type) || this["_compare" + type];
     },
     setSortingFunction : function(func){
 
       func = func || function(){
       };
-      this._forEachElementWrapped(function(table){
-
-        table.setProperty("__sortingFunction", func);
-      }.bind(this));
+      this.__sortingFunction = func;
       return this;
     },
     unsetSortingFunction : function(){
 
-      this._forEachElementWrapped(function(table){
-
-        table.setProperty("__sortingFunction", this.__defaultColumnSort);
-      }.bind(this));
+      this.__sortingFunction = this.__defaultColumnSort;
       return this;
     },
     setFilterFunction : function(func){
 
-      this._forEachElementWrapped(function(table){
-
-        table.setProperty("__filterFunction", func);
-      }.bind(this));
+      this.__filterFunction = func;
       return this;
     },
     unsetFilterFunction : function(){
 
-      this._forEachElementWrapped(function(table){
-
-        table.setProperty("__filterFunction", this.__defaultColumnFilter);
-      }.bind(this));
+      this.__filterFunction = this.__defaultColumnFilter;
       return this;
     },
     setColumnFilter : function(columnName, func){
 
-      this._forEachElementWrapped(function(table){
+      this.__checkColumnExistance(columnName);
+      if(!this.__filterFunc){
 
-        table.__checkColumnExistance(columnName);
-        if(!table.getProperty("__filterFunc")){
-
-          table.setProperty("__filterFunc", {
-          });
+        this.__filterFunc = {
         };
-        table.getProperty("__filterFunc")[columnName] = func;
-      }.bind(this));
+      };
+      this.__filterFunc[columnName] = func;
       return this;
     },
     getColumnFilter : function(columnName){
 
-      if(this.eq(0).getProperty("__filterFunc")){
+      if(this.__filterFunc){
 
-        return this.eq(0).getProperty("__filterFunc")[columnName];
+        return this.__filterFunc[columnName];
       };
       return null;
     },
     setRowFilter : function(func){
 
-      this._forEachElementWrapped(function(table){
+      if(!this.__filterFunc){
 
-        if(!table.getProperty("__filterFunc")){
-
-          table.setProperty("__filterFunc", {
-          });
+        this.__filterFunc = {
         };
-        table.getProperty("__filterFunc").row = func;
-      }.bind(this));
+      };
+      this.__filterFunc.row = func;
       return this;
     },
     getRowFilter : function(){
 
-      if(this.eq(0).getProperty("__filterFunc")){
+      if(this.__filterFunc){
 
-        return this.eq(0).getProperty("__filterFunc").row;
+        return this.__filterFunc.row;
       };
       return null;
     },
     sort : function(columnName, dir){
 
       this.__checkColumnExistance(columnName);
-      this._forEachElementWrapped(function(table){
-
-        table.setSortingClass(columnName, dir);
-        table.__sortDOM(table.__sort(columnName, dir));
-      }.bind(this));
+      this.setSortingClass(columnName, dir);
+      this.__sortDOM(this.__sort(columnName, dir));
       this.emit("sort", {
         columName : columnName,
         direction : dir
@@ -111434,26 +111063,23 @@ qx.Bootstrap.define("qx.ui.website.Table", {
 
         columnName = qx.ui.website.Table.__allColumnSelector;
       };
-      this._forEachElementWrapped(function(table){
+      if(!this.__filters){
 
-        if(!table.getProperty("__filters")){
-
-          table.setProperty("__filters", {
-          });
+        this.__filters = {
         };
-        if(table.getProperty("__filters")[columnName]){
+      };
+      if(this.__filters[columnName]){
 
-          table.getProperty("__filters")[columnName].keyword = keyword;
-          table.__getRoot().appendChild(table.getProperty("__filters")[columnName].rows);
-        } else {
+        this.__filters[columnName].keyword = keyword;
+        this.__getRoot().appendChild(this.__filters[columnName].rows);
+      } else {
 
-          table.getProperty("__filters")[columnName] = {
-            keyword : keyword,
-            rows : document.createDocumentFragment()
-          };
+        this.__filters[columnName] = {
+          keyword : keyword,
+          rows : document.createDocumentFragment()
         };
-        table.__filterDom(keyword, columnName);
-      }.bind(this));
+      };
+      this.__filterDom(keyword, columnName);
       this.emit("filter", {
         columName : columnName,
         keyword : keyword
@@ -111463,23 +111089,20 @@ qx.Bootstrap.define("qx.ui.website.Table", {
     resetFilter : function(columnName){
 
       var filters = null;
-      this._forEachElementWrapped(function(table){
+      filters = this.__filters;
+      if(filters){
 
-        filters = table.getProperty("__filters");
-        if(filters){
+        if(columnName){
 
-          if(columnName){
+          this.__getRoot().appendChild(filters[columnName].rows);
+        } else {
 
-            table.__getRoot().appendChild(filters[columnName].rows);
-          } else {
+          for(var col in filters){
 
-            for(var col in filters){
-
-              table.__getRoot().appendChild(filters[col].rows);
-            };
+            this.__getRoot().appendChild(filters[col].rows);
           };
         };
-      });
+      };
       return this;
     },
     setContent : function(tableData){
@@ -111537,37 +111160,34 @@ qx.Bootstrap.define("qx.ui.website.Table", {
         data = {
           columnName : columnName,
           columnIndex : colIndex,
-          cell : colIndex ? qxWeb(rows[i].cells.item(colIndex)) : null,
+          cell : colIndex > -1 ? qxWeb(rows[i].cells.item(colIndex)) : null,
           row : qxWeb(rows[i]),
           keyword : keyword
         };
         if(!filterFunc.bind(this)(data)){
 
-          this.getProperty("__filters")[columnName].rows.appendChild(rows[i]);
+          this.__filters[columnName].rows.appendChild(rows[i]);
         };
       };
       return this;
     },
     getSortingData : function(){
 
-      return this.eq(0).getProperty("__sortingData");
+      return this.__sortingData;
     },
     render : function(){
 
-      this._forEachElementWrapped(function(table){
+      var sortingData = this.getSortingData();
+      var rowSelection = this.getConfig("rowSelection");
+      this.__applyTemplate(this.__model);
+      if(qx.ui.website.Table.__selectionTypes.indexOf(rowSelection) != -1){
 
-        var sortingData = table.getSortingData();
-        var rowSelection = table.getConfig("rowSelection");
-        table.__applyTemplate(table.getProperty("__model"));
-        if(qx.ui.website.Table.__selectionTypes.indexOf(rowSelection) != -1){
+        this.__processSelectionInputs(rowSelection);
+      };
+      if(sortingData){
 
-          table.__processSelectionInputs(rowSelection);
-        };
-        if(sortingData){
-
-          table.__sortDOM(table.__sort(sortingData.columnName, sortingData.direction));
-        };
-      });
+        this.__sortDOM(this.__sort(sortingData.columnName, sortingData.direction));
+      };
       return this;
     },
     __processSelectionInputs : function(rowSelection){
@@ -111606,7 +111226,7 @@ qx.Bootstrap.define("qx.ui.website.Table", {
 
         nodeName = qxWeb.getNodeName(qxWeb(row.cells.item(0)));
       };
-      var clazz = qx.ui.website.Table,inputName = this.getProperty("__inputName");
+      var inputName = this.__inputName;
       var className = (nodeName == "th") ? clazz.__internalSelectionClass + " " + clazz.__internalHeaderClass : clazz.__internalSelectionClass;
       var currentInput = qxWeb(row).find("." + clazz.__internalSelectionClass);
       if(currentInput.length > 0){
@@ -111630,7 +111250,7 @@ qx.Bootstrap.define("qx.ui.website.Table", {
     },
     __checkColumnExistance : function(columnName){
 
-      var data = this.getProperty("__columnMeta");
+      var data = this.__columnMeta;
       if(data && !data[columnName]){
 
         throw new Error("Column " + columnName + " does not exists !");
@@ -111678,7 +111298,7 @@ qx.Bootstrap.define("qx.ui.website.Table", {
           name : colName
         };
       };
-      this.setProperty("__columnMeta", data);
+      this.__columnMeta = data;
       return this;
     },
     __addClassToHeaderAndFooter : function(footOrHead){
@@ -111708,7 +111328,6 @@ qx.Bootstrap.define("qx.ui.website.Table", {
           qxWeb(dataRows[i]).insertBefore(qxWeb(this.__getRoot().rows.item(0)));
         };
       };
-      this.setProperty("__dataRows", dataRows);
       return this;
     },
     __registerEvents : function(){
@@ -111718,7 +111337,7 @@ qx.Bootstrap.define("qx.ui.website.Table", {
 
         if(data.cell && data.cell.hasClass(qx.ui.website.Table.__internalHeaderClass)){
 
-          this.getProperty("__sortingFunction").bind(this)(data);
+          this.__sortingFunction.bind(this)(data);
         };
       }, this);
       this.on("pointerover", this.__cellHover, this);
@@ -111835,7 +111454,7 @@ qx.Bootstrap.define("qx.ui.website.Table", {
 
       var target = e.getTarget();
       var cell = qxWeb(target);
-      var hovered = this.getProperty("__hovered");
+      var hovered = this.__hovered;
       if(!cell.hasClass("qx-table-cell") && !cell.hasClass("qx-table-header")){
 
         cell = cell.getClosest(".qx-table-cell, .qx-table-header");
@@ -111844,21 +111463,21 @@ qx.Bootstrap.define("qx.ui.website.Table", {
 
         if(hovered){
 
-          this.emit("cellOut", this.getProperty("__hovered"));
+          this.emit("cellOut", hovered);
         };
-        this.setProperty("__hovered", this.__fireEvent("cellHover", cell, target));
+        this.__hovered = this.__fireEvent("cellHover", cell, target);
       };
     },
     __cellOut : function(e){
 
       var relatedTarget = e.getRelatedTarget();
       var cell = qxWeb(relatedTarget);
-      if(this.getProperty("__hovered")){
+      if(this.__hovered){
 
         if(!cell.isChildOf(this)){
 
-          this.emit("cellOut", this.getProperty("__hovered"));
-          this.setProperty("__hovered", null);
+          this.emit("cellOut", this.__hovered);
+          this.__hovered = null;
         } else {
 
           if(!cell.hasClass("qx-table-cell") && !cell.hasClass("qx-table-header")){
@@ -111866,8 +111485,8 @@ qx.Bootstrap.define("qx.ui.website.Table", {
             cell = cell.getClosest(".qx-table-cell, .qx-table-header");
             if(cell.hasClass("qx-table-row-selection")){
 
-              this.emit("cellOut", this.getProperty("__hovered"));
-              this.setProperty("__hovered", null);
+              this.emit("cellOut", this.__hovered);
+              this.__hovered = null;
             };
           };
         };
@@ -111949,7 +111568,7 @@ qx.Bootstrap.define("qx.ui.website.Table", {
     },
     __getDataForColumn : function(columName){
 
-      return this.getProperty("__columnMeta")[columName];
+      return this.__columnMeta[columName];
     },
     __getRoot : function(){
 
@@ -111981,7 +111600,7 @@ qx.Bootstrap.define("qx.ui.website.Table", {
         columnName : columnName,
         direction : dir
       };
-      this.setProperty("__sortingData", data);
+      this.__sortingData = data;
       this.__addSortingClassToCol(this[0].tHead, columnName, dir);
     },
     __addSortingClassToCol : function(HeaderOrFooter, columnName, dir){
@@ -112064,7 +111683,7 @@ qx.Bootstrap.define("qx.ui.website.Table", {
     },
     __getCellValue : function(cell){
 
-      return cell.getTextContent() || "";
+      return cell[0].textContent || cell[0].innerText || "";
     },
     __getDataRows : function(){
 
@@ -112911,6 +112530,404 @@ qx.Bootstrap.define("qx.module.event.Track", {
   defer : function(statics){
 
     qxWeb.$registerEventNormalization(qx.module.event.Track.TYPES, statics.normalize);
+  }
+});
+
+qx.Class.define("qx.ui.command.Command", {
+  extend : qx.core.Object,
+  construct : function(shortcut){
+
+    this.base(arguments);
+    this._shortcut = new qx.bom.Shortcut(shortcut);
+    this._shortcut.addListener("execute", this.execute, this);
+    if(shortcut !== undefined){
+
+      this.setShortcut(shortcut);
+    };
+  },
+  events : {
+    "execute" : "qx.event.type.Data"
+  },
+  properties : {
+    active : {
+      init : true,
+      check : "Boolean",
+      event : "changeActive",
+      apply : "_applyActive"
+    },
+    enabled : {
+      init : true,
+      check : "Boolean",
+      event : "changeEnabled",
+      apply : "_applyEnabled"
+    },
+    shortcut : {
+      check : "String",
+      apply : "_applyShortcut",
+      nullable : true
+    },
+    label : {
+      check : "String",
+      nullable : true,
+      event : "changeLabel"
+    },
+    icon : {
+      check : "String",
+      nullable : true,
+      event : "changeIcon"
+    },
+    toolTipText : {
+      check : "String",
+      nullable : true,
+      event : "changeToolTipText"
+    },
+    value : {
+      nullable : true,
+      event : "changeValue"
+    },
+    menu : {
+      check : "qx.ui.menu.Menu",
+      nullable : true,
+      event : "changeMenu"
+    }
+  },
+  members : {
+    _shortcut : null,
+    _applyActive : function(value){
+
+      if(value === false){
+
+        this._shortcut.setEnabled(false);
+      } else {
+
+        this._shortcut.setEnabled(this.getEnabled());
+      };
+    },
+    _applyEnabled : function(value){
+
+      if(this.getActive()){
+
+        this._shortcut.setEnabled(value);
+      };
+    },
+    _applyShortcut : function(value){
+
+      this._shortcut.setShortcut(value);
+    },
+    execute : function(target){
+
+      if(this.getActive() && this.getEnabled()){
+
+        this.fireDataEvent("execute", target);
+      };
+    },
+    toString : function(){
+
+      if(this._shortcut){
+
+        return this._shortcut.toString();
+      };
+      return this.base(arguments);
+    }
+  },
+  destruct : function(){
+
+    this._shortcut.removeListener("execute", this.execute, this);
+    this._disposeObjects("_shortcut");
+  }
+});
+
+qx.Class.define("qx.bom.Shortcut", {
+  extend : qx.core.Object,
+  construct : function(shortcut){
+
+    this.base(arguments);
+    this.__modifier = {
+    };
+    this.__key = null;
+    if(shortcut != null){
+
+      this.setShortcut(shortcut);
+    };
+    this.initEnabled();
+  },
+  events : {
+    "execute" : "qx.event.type.Data"
+  },
+  properties : {
+    enabled : {
+      init : true,
+      check : "Boolean",
+      event : "changeEnabled",
+      apply : "_applyEnabled"
+    },
+    shortcut : {
+      check : "String",
+      apply : "_applyShortcut",
+      nullable : true
+    },
+    autoRepeat : {
+      check : "Boolean",
+      init : false
+    }
+  },
+  members : {
+    __modifier : "",
+    __key : "",
+    execute : function(target){
+
+      this.fireDataEvent("execute", target);
+    },
+    __onKeyDown : function(event){
+
+      if(this.getEnabled() && this.__matchesKeyEvent(event)){
+
+        if(!this.isAutoRepeat()){
+
+          this.execute(event.getTarget());
+        };
+        event.stop();
+      };
+    },
+    __onKeyPress : function(event){
+
+      if(this.getEnabled() && this.__matchesKeyEvent(event)){
+
+        if(this.isAutoRepeat()){
+
+          this.execute(event.getTarget());
+        };
+        event.stop();
+      };
+    },
+    _applyEnabled : function(value, old){
+
+      if(value){
+
+        qx.event.Registration.addListener(document.documentElement, "keydown", this.__onKeyDown, this);
+        qx.event.Registration.addListener(document.documentElement, "keypress", this.__onKeyPress, this);
+      } else {
+
+        qx.event.Registration.removeListener(document.documentElement, "keydown", this.__onKeyDown, this);
+        qx.event.Registration.removeListener(document.documentElement, "keypress", this.__onKeyPress, this);
+      };
+    },
+    _applyShortcut : function(value, old){
+
+      if(value){
+
+        if(value.search(/[\s]+/) != -1){
+
+          var msg = "Whitespaces are not allowed within shortcuts";
+          this.error(msg);
+          throw new Error(msg);
+        };
+        this.__modifier = {
+          "Control" : false,
+          "Shift" : false,
+          "Meta" : false,
+          "Alt" : false
+        };
+        this.__key = null;
+        var index;
+        var a = [];
+        while(value.length > 0 && index != -1){
+
+          index = value.search(/[-+]+/);
+          a.push((value.length == 1 || index == -1) ? value : value.substring(0, index));
+          value = value.substring(index + 1);
+        };
+        var al = a.length;
+        for(var i = 0;i < al;i++){
+
+          var identifier = this.__normalizeKeyIdentifier(a[i]);
+          switch(identifier){case "Control":case "Shift":case "Meta":case "Alt":
+          this.__modifier[identifier] = true;
+          break;case "Unidentified":
+          var msg = "Not a valid key name for a shortcut: " + a[i];
+          this.error(msg);
+          throw msg;default:
+          if(this.__key){
+
+            var msg = "You can only specify one non modifier key!";
+            this.error(msg);
+            throw msg;
+          };
+          this.__key = identifier;};
+        };
+      };
+      return true;
+    },
+    __matchesKeyEvent : function(e){
+
+      var key = this.__key;
+      if(!key){
+
+        return false;
+      };
+      if((!this.__modifier.Shift && e.isShiftPressed()) || (this.__modifier.Shift && !e.isShiftPressed()) || (!this.__modifier.Control && e.isCtrlPressed()) || (this.__modifier.Control && !e.isCtrlPressed()) || (!this.__modifier.Meta && e.isMetaPressed()) || (this.__modifier.Meta && !e.isMetaPressed()) || (!this.__modifier.Alt && e.isAltPressed()) || (this.__modifier.Alt && !e.isAltPressed())){
+
+        return false;
+      };
+      if(key == e.getKeyIdentifier()){
+
+        return true;
+      };
+      return false;
+    },
+    __oldKeyNameToKeyIdentifierMap : {
+      esc : "Escape",
+      ctrl : "Control",
+      print : "PrintScreen",
+      del : "Delete",
+      pageup : "PageUp",
+      pagedown : "PageDown",
+      numlock : "NumLock",
+      numpad_0 : "0",
+      numpad_1 : "1",
+      numpad_2 : "2",
+      numpad_3 : "3",
+      numpad_4 : "4",
+      numpad_5 : "5",
+      numpad_6 : "6",
+      numpad_7 : "7",
+      numpad_8 : "8",
+      numpad_9 : "9",
+      numpad_divide : "/",
+      numpad_multiply : "*",
+      numpad_minus : "-",
+      numpad_plus : "+"
+    },
+    __normalizeKeyIdentifier : function(keyName){
+
+      var kbUtil = qx.event.util.Keyboard;
+      var keyIdentifier = "Unidentified";
+      if(kbUtil.isValidKeyIdentifier(keyName)){
+
+        return keyName;
+      };
+      if(keyName.length == 1 && keyName >= "a" && keyName <= "z"){
+
+        return keyName.toUpperCase();
+      };
+      keyName = keyName.toLowerCase();
+      var keyIdentifier = this.__oldKeyNameToKeyIdentifierMap[keyName] || qx.lang.String.firstUp(keyName);
+      if(kbUtil.isValidKeyIdentifier(keyIdentifier)){
+
+        return keyIdentifier;
+      } else {
+
+        return "Unidentified";
+      };
+    },
+    toString : function(){
+
+      var key = this.__key;
+      var str = [];
+      for(var modifier in this.__modifier){
+
+        if(this.__modifier[modifier]){
+
+          str.push(qx.locale.Key.getKeyName("short", modifier));
+        };
+      };
+      if(key){
+
+        str.push(qx.locale.Key.getKeyName("short", key));
+      };
+      return str.join("+");
+    }
+  },
+  destruct : function(){
+
+    this.setEnabled(false);
+    this.__modifier = this.__key = null;
+  }
+});
+
+qx.Class.define("qx.locale.Key", {
+  statics : {
+    getKeyName : function(size, keyIdentifier, locale){
+
+      if(qx.core.Environment.get("qx.debug")){
+
+        qx.core.Assert.assertInArray(size, ["short", "full"]);
+      };
+      var key = "key_" + size + "_" + keyIdentifier;
+      if(qx.core.Environment.get("os.name") == "osx" && keyIdentifier == "Control"){
+
+        key += "_Mac";
+      };
+      var localizedKey = qx.locale.Manager.getInstance().translate(key, [], locale);
+      if(localizedKey == key){
+
+        return qx.locale.Key._keyNames[key] || keyIdentifier;
+      } else {
+
+        return localizedKey;
+      };
+    }
+  },
+  defer : function(statics){
+
+    var keyNames = {
+    };
+    var Manager = qx.locale.Manager;
+    keyNames[Manager.marktr("key_short_Backspace")] = "Backspace";
+    keyNames[Manager.marktr("key_short_Tab")] = "Tab";
+    keyNames[Manager.marktr("key_short_Space")] = "Space";
+    keyNames[Manager.marktr("key_short_Enter")] = "Enter";
+    keyNames[Manager.marktr("key_short_Shift")] = "Shift";
+    keyNames[Manager.marktr("key_short_Control")] = "Ctrl";
+    keyNames[Manager.marktr("key_short_Control_Mac")] = "Ctrl";
+    keyNames[Manager.marktr("key_short_Alt")] = "Alt";
+    keyNames[Manager.marktr("key_short_CapsLock")] = "Caps";
+    keyNames[Manager.marktr("key_short_Meta")] = "Meta";
+    keyNames[Manager.marktr("key_short_Escape")] = "Esc";
+    keyNames[Manager.marktr("key_short_Left")] = "Left";
+    keyNames[Manager.marktr("key_short_Up")] = "Up";
+    keyNames[Manager.marktr("key_short_Right")] = "Right";
+    keyNames[Manager.marktr("key_short_Down")] = "Down";
+    keyNames[Manager.marktr("key_short_PageUp")] = "PgUp";
+    keyNames[Manager.marktr("key_short_PageDown")] = "PgDn";
+    keyNames[Manager.marktr("key_short_End")] = "End";
+    keyNames[Manager.marktr("key_short_Home")] = "Home";
+    keyNames[Manager.marktr("key_short_Insert")] = "Ins";
+    keyNames[Manager.marktr("key_short_Delete")] = "Del";
+    keyNames[Manager.marktr("key_short_NumLock")] = "Num";
+    keyNames[Manager.marktr("key_short_PrintScreen")] = "Print";
+    keyNames[Manager.marktr("key_short_Scroll")] = "Scroll";
+    keyNames[Manager.marktr("key_short_Pause")] = "Pause";
+    keyNames[Manager.marktr("key_short_Win")] = "Win";
+    keyNames[Manager.marktr("key_short_Apps")] = "Apps";
+    keyNames[Manager.marktr("key_full_Backspace")] = "Backspace";
+    keyNames[Manager.marktr("key_full_Tab")] = "Tabulator";
+    keyNames[Manager.marktr("key_full_Space")] = "Space";
+    keyNames[Manager.marktr("key_full_Enter")] = "Enter";
+    keyNames[Manager.marktr("key_full_Shift")] = "Shift";
+    keyNames[Manager.marktr("key_full_Control")] = "Control";
+    keyNames[Manager.marktr("key_full_Control_Mac")] = "Control";
+    keyNames[Manager.marktr("key_full_Alt")] = "Alt";
+    keyNames[Manager.marktr("key_full_CapsLock")] = "CapsLock";
+    keyNames[Manager.marktr("key_full_Meta")] = "Meta";
+    keyNames[Manager.marktr("key_full_Escape")] = "Escape";
+    keyNames[Manager.marktr("key_full_Left")] = "Left";
+    keyNames[Manager.marktr("key_full_Up")] = "Up";
+    keyNames[Manager.marktr("key_full_Right")] = "Right";
+    keyNames[Manager.marktr("key_full_Down")] = "Down";
+    keyNames[Manager.marktr("key_full_PageUp")] = "PageUp";
+    keyNames[Manager.marktr("key_full_PageDown")] = "PageDown";
+    keyNames[Manager.marktr("key_full_End")] = "End";
+    keyNames[Manager.marktr("key_full_Home")] = "Home";
+    keyNames[Manager.marktr("key_full_Insert")] = "Insert";
+    keyNames[Manager.marktr("key_full_Delete")] = "Delete";
+    keyNames[Manager.marktr("key_full_NumLock")] = "NumLock";
+    keyNames[Manager.marktr("key_full_PrintScreen")] = "PrintScreen";
+    keyNames[Manager.marktr("key_full_Scroll")] = "Scroll";
+    keyNames[Manager.marktr("key_full_Pause")] = "Pause";
+    keyNames[Manager.marktr("key_full_Win")] = "Win";
+    keyNames[Manager.marktr("key_full_Apps")] = "Apps";
+    statics._keyNames = keyNames;
   }
 });
 
@@ -114289,7 +114306,9 @@ qx.Bootstrap.define("qx.module.MatchMedia", {
 
         this.removeClass(className);
       };
-    },
+    }
+  },
+  members : {
     mediaQueryToClass : function(queryString, className){
 
       var query = qx.module.MatchMedia.matchMedia(queryString);
@@ -114301,13 +114320,7 @@ qx.Bootstrap.define("qx.module.MatchMedia", {
   },
   defer : function(statics){
 
-    qxWeb.$attachStatic({
-      matchMedia : statics.matchMedia,
-      addSizeClasses : statics.addSizeClasses
-    });
-    qxWeb.$attach({
-      mediaQueryToClass : statics.mediaQueryToClass
-    });
+    qxWeb.$attachAll(this);
   }
 });
 
@@ -114931,13 +114944,7 @@ qx.Bootstrap.define("qx.module.Cookie", {
   },
   defer : function(statics){
 
-    qxWeb.$attachStatic({
-      "cookie" : {
-        get : statics.get,
-        set : statics.set,
-        del : statics.del
-      }
-    });
+    qxWeb.$attachAll(this, "cookie");
   }
 });
 
@@ -115755,6 +115762,9 @@ qx.Class.define("qx.util.fsm.FiniteStateMachine", {
       OBJECT_NOT_FOUND : 8
     }
   },
+  events : {
+    "terminated" : "qx.event.type.Data"
+  },
   properties : {
     name : {
       check : "String",
@@ -115793,6 +115803,11 @@ qx.Class.define("qx.util.fsm.FiniteStateMachine", {
     __groupToFriendly : null,
     __friendlyToGroups : null,
     __bEventProcessingInProgress : false,
+    __bTerminated : true,
+    isTerminated : function(){
+
+      return this.__bTerminated;
+    },
     addState : function(state){
 
       if(!state instanceof qx.util.fsm.State){
@@ -115932,6 +115947,7 @@ qx.Class.define("qx.util.fsm.FiniteStateMachine", {
     },
     start : function(){
 
+      this.__bTerminated = false;
       var stateName = this.__startState;
       if(stateName == null){
 
@@ -116009,12 +116025,22 @@ qx.Class.define("qx.util.fsm.FiniteStateMachine", {
     },
     eventListener : function(event){
 
+      if(this.__bTerminated){
+
+        this.debug(this.getName() + ": Cannot listen to event '" + event.getType() + "', because the finite state machine is not running.");
+        return;
+      };
       var e = event.clone();
       this.enqueueEvent(e, false);
       this.__processEvents();
     },
     fireImmediateEvent : function(type, target, data){
 
+      if(this.__bTerminated){
+
+        this.debug(this.getName() + ": Cannot listen to event '" + type + "', because the finite state machine is not running.");
+        return;
+      };
       if(data){
 
         var event = qx.event.Registration.createEvent(type, qx.event.type.Data, [data, null, false]);
@@ -116154,6 +116180,9 @@ qx.Class.define("qx.util.fsm.FiniteStateMachine", {
           };
           nextState = this.__savedStates.pop();
           this.setNextState(nextState);
+          break;case qx.util.fsm.FiniteStateMachine.StateChange.TERMINATE:
+          this.__bTerminated = true;
+          this.setNextState(null);
           break;default:
           throw new Error("Internal error: invalid nextState");};
         };
@@ -116190,6 +116219,15 @@ qx.Class.define("qx.util.fsm.FiniteStateMachine", {
         if(currentState._bNeedDispose){
 
           currentState.dispose();
+        };
+        if(this.__bTerminated){
+
+          if(debugFunctions){
+
+            this.debug(this.getName() + "#" + "TERMINATED");
+          };
+          this.fireDataEvent("terminated", thisState);
+          return true;
         };
         currentState = this.__states[this.getNextState()];
         this.setPreviousState(thisState);
@@ -117813,7 +117851,11 @@ qx.Bootstrap.define("qx.bom.rest.Resource", {
     "success" : "qx.bom.rest.Resource",
     "actionSuccess" : "qx.bom.rest.Resource",
     "error" : "qx.bom.rest.Resource",
-    "actionError" : "qx.bom.rest.Resource"
+    "actionError" : "qx.bom.rest.Resource",
+    "sent" : "qx.bom.rest.Resource",
+    "actionSent" : "qx.bom.rest.Resource",
+    "started" : "qx.bom.rest.Resource",
+    "actionStarted" : "qx.bom.rest.Resource"
   },
   statics : {
     POLL_THROTTLE_LIMIT : 100,
@@ -117888,7 +117930,39 @@ qx.Bootstrap.define("qx.bom.rest.Resource", {
 
             return function(){
 
-              req.dispose();
+              window.setTimeout(function(){
+
+                req.dispose();
+              }, 0);
+            };
+          },
+          context : this
+        },
+        onreadystatechange : {
+          callback : function(req, action){
+
+            return function(){
+
+              if(req.getTransport().readyState === qx.bom.request.Xhr.HEADERS_RECEIVED){
+
+                var response = {
+                  "id" : parseInt(req.toHashCode(), 10),
+                  "request" : req,
+                  "action" : action
+                };
+                this.emit(action + "Sent", response);
+                this.emit("sent", response);
+              };
+              if(req.getTransport().readyState === qx.bom.request.Xhr.OPENED){
+
+                var payload = {
+                  "id" : parseInt(req.toHashCode(), 10),
+                  "request" : req,
+                  "action" : action
+                };
+                this.emit(action + "Started", payload);
+                this.emit("started", payload);
+              };
             };
           },
           context : this
@@ -117955,6 +118029,10 @@ qx.Bootstrap.define("qx.bom.rest.Resource", {
       req.addListenerOnce("success", reqHandler.onsuccess.callback(req, action), reqHandler.onsuccess.context);
       req.addListenerOnce("fail", reqHandler.onfail.callback(req, action), reqHandler.onfail.context);
       req.addListenerOnce("loadEnd", reqHandler.onloadend.callback(req, action), reqHandler.onloadend.context);
+      if(reqHandler.hasOwnProperty("onreadystatechange")){
+
+        req.addListener("readystatechange", reqHandler.onreadystatechange.callback(req, action), reqHandler.onreadystatechange.context);
+      };
       req.send();
       return parseInt(req.toHashCode(), 10);
     },
@@ -118306,7 +118384,7 @@ qx.Bootstrap.define("qx.bom.rest.Resource", {
 });
 
 qx.Bootstrap.define("qx.bom.request.SimpleXhr", {
-  extend : Object,
+  extend : qx.event.Emitter,
   construct : function(url, method){
 
     if(url !== undefined){
@@ -118330,6 +118408,14 @@ qx.Bootstrap.define("qx.bom.request.SimpleXhr", {
     getRequestHeader : function(key){
 
       return this.__requestHeaders[key];
+    },
+    getResponseHeader : function(header){
+
+      return this._transport.getResponseHeader(header);
+    },
+    getAllResponseHeaders : function(){
+
+      return this._transport.getAllResponseHeaders();
     },
     setUrl : function(url){
 
@@ -118525,7 +118611,12 @@ qx.Bootstrap.define("qx.bom.request.SimpleXhr", {
     __disposed : null,
     addListenerOnce : function(name, listener, ctx){
 
-      this._transport._emitter.once(name, listener, ctx);
+      this.once(name, listener, ctx);
+      return this;
+    },
+    addListener : function(name, listener, ctx){
+
+      this._transport._emitter.on(name, listener, ctx);
       return this;
     },
     _onReadyStateChange : function(){
@@ -118554,7 +118645,7 @@ qx.Bootstrap.define("qx.bom.request.SimpleXhr", {
           qx.Bootstrap.debug("Response is of type: '" + contentType + "'");
         };
         this._setResponse(this.__parser.parse(response, contentType));
-        this._transport._emit("success");
+        this.emit("success");
       } else {
 
         try{
@@ -118564,27 +118655,27 @@ qx.Bootstrap.define("qx.bom.request.SimpleXhr", {
         };
         if(this._transport.status !== 0){
 
-          this._transport._emit("fail");
+          this.emit("fail");
         };
       };
     },
     _onLoadEnd : function(){
 
-      this._transport._emit("loadEnd");
+      this.emit("loadEnd");
     },
     _onAbort : function(){
 
-      this._transport._emit("abort");
+      this.emit("abort");
     },
     _onTimeout : function(){
 
-      this._transport._emit("timeout");
-      this._transport._emit("fail");
+      this.emit("timeout");
+      this.emit("fail");
     },
     _onError : function(){
 
-      this._transport._emit("error");
-      this._transport._emit("fail");
+      this.emit("error");
+      this.emit("fail");
     }
   }
 });
@@ -118909,6 +119000,21 @@ qx.Class.define("qx.ui.form.Form", {
       };
       return false;
     },
+    getItems : function(){
+
+      var items = {
+      };
+      for(var i = 0;i < this.__groups.length;i++){
+
+        var group = this.__groups[i];
+        for(var j = 0;j < group.names.length;j++){
+
+          var name = group.names[j];
+          items[name] = group.items[j];
+        };
+      };
+      return items;
+    },
     reset : function(){
 
       this._resetter.reset();
@@ -118941,21 +119047,6 @@ qx.Class.define("qx.ui.form.Form", {
     getButtonOptions : function(){
 
       return this._buttonOptions;
-    },
-    getItems : function(){
-
-      var items = {
-      };
-      for(var i = 0;i < this.__groups.length;i++){
-
-        var group = this.__groups[i];
-        for(var j = 0;j < group.names.length;j++){
-
-          var name = group.names[j];
-          items[name] = group.items[j];
-        };
-      };
-      return items;
     },
     _createValidationManager : function(){
 
@@ -119313,7 +119404,10 @@ qx.Class.define("qx.ui.mobile.control.Picker", {
     },
     _onSlotDataChange : function(){
 
-      this.refresh();
+      window.setTimeout(function(){
+
+        this.refresh();
+      }.bind(this), 0);
     }
   },
   destruct : function(){
@@ -119330,7 +119424,7 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
     _templates : {
       controls : "<tr>" + "<td colspan='1' class='{{cssPrefix}}-prev-container'><button class='{{cssPrefix}}-prev' {{prevDisabled}} title='Previous Month'>&lt;</button></td>" + "<td colspan='5' class='{{cssPrefix}}-month'>{{month}} {{year}}</td>" + "<td colspan='1' class='{{cssPrefix}}-next-container'><button class='{{cssPrefix}}-next' {{nextDisabled}} title='Next Month'>&gt;</button></td>" + "</tr>",
       dayRow : "<tr>" + "{{#row}}<td class='{{cssPrefix}}-dayname'>{{.}}</td>{{/row}}" + "</tr>",
-      row : "<tr>" + "{{#row}}<td class='{{cssClass}}'><button class='{{cssPrefix}}-day' {{disabled}} value='{{date}}'>{{day}}</button></td>{{/row}}" + "</tr>",
+      row : "<tr>" + "{{#row}}<td class='{{cssClass}}'><button class='{{cssPrefix}}-day {{hidden}}' {{disabled}} value='{{date}}'>{{day}}</button></td>{{/row}}" + "</tr>",
       table : "<table class='{{cssPrefix}}-container'><thead>{{{thead}}}</thead><tbody>{{{tbody}}}</tbody></table>"
     },
     _config : {
@@ -119339,7 +119433,9 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
       minDate : null,
       maxDate : null,
       selectableWeekDays : [0, 1, 2, 3, 4, 5, 6],
-      selectionMode : "single"
+      selectionMode : "single",
+      hideDaysOtherMonth : false,
+      disableDaysOtherMonth : false
     },
     calendar : function(date){
 
@@ -119357,21 +119453,23 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
     this.base(arguments, selector, context);
   },
   events : {
-    "changeValue" : "Date"
+    "changeValue" : "Date",
+    "rendered" : ""
   },
   members : {
+    __range : null,
+    _value : null,
+    _shownValue : null,
     init : function(){
 
       if(!this.base(arguments)){
 
         return false;
       };
+      this.__range = [];
       var today = new Date();
-      this._normalizeDate(today);
-      this._forEachElementWrapped(function(calendar){
-
-        calendar.showValue(today);
-      });
+      today = this._getNormalizedDate(today);
+      this.showValue(today);
       return true;
     },
     render : function(){
@@ -119379,38 +119477,25 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
       var minDate = this.getConfig("minDate");
       if(minDate){
 
-        this._normalizeDate(minDate);
+        minDate = this._getNormalizedDate(minDate);
       };
       var maxDate = this.getConfig("maxDate");
       if(maxDate){
 
-        this._normalizeDate(maxDate);
+        maxDate = this._getNormalizedDate(maxDate);
       };
-      this.showValue(this.getProperty("shownValue"));
-      this.setEnabled(this.getEnabled());
+      this.showValue(this._shownValue);
       return this;
     },
     setEnabled : function(value){
 
-      var minDate = this.getConfig("minDate");
-      var maxDate = this.getConfig("maxDate");
-      var currentDate = null;
-      this.base(arguments, value);
-      if(value && (minDate || maxDate)){
+      this.setAttribute("disabled", !value);
+      if(value === true){
 
-        this.find("button.qx-calendar-day").map(function(button){
+        this.render();
+      } else {
 
-          currentDate = new Date(button.getAttribute("value"));
-          button = qxWeb(button);
-          if(minDate && currentDate < minDate){
-
-            button.setAttribute("disabled", true);
-          };
-          if(maxDate && currentDate > maxDate){
-
-            button.setAttribute("disabled", true);
-          };
-        });
+        this.find("*").setAttribute("disabled", !value);
       };
       return this;
     },
@@ -119420,14 +119505,14 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
       var maxDate = this.getConfig("maxDate");
       if(this.getConfig("selectionMode") == "single"){
 
-        this._normalizeDate(value);
+        value = this._getNormalizedDate(value);
         if(this.getConfig("selectableWeekDays").indexOf(value.getDay()) == -1){
 
           throw new Error("The given date's week day is not selectable.");
         };
         if(minDate){
 
-          this._normalizeDate(minDate);
+          minDate = this._getNormalizedDate(minDate);
           if(value < minDate){
 
             throw new Error("Given date " + value.toDateString() + " is earlier than configured minDate " + minDate.toDateString());
@@ -119435,7 +119520,7 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
         };
         if(maxDate){
 
-          this._normalizeDate(maxDate);
+          maxDate = this._getNormalizedDate(maxDate);
           if(value > maxDate){
 
             throw new Error("Given date " + value.toDateString() + " is later than configured maxDate " + maxDate.toDateString());
@@ -119443,12 +119528,12 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
         };
       } else if(this.getConfig("selectionMode") == "range"){
 
-        if(!this.getProperty("__range")){
+        if(!this.__range){
 
-          this.setProperty("__range", value.map(function(val){
+          this.__range = value.map(function(val){
 
             return val.toDateString();
-          }));
+          });
         };
         if(value.length == 2){
 
@@ -119459,10 +119544,10 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
           value = this._generateRange(value);
         } else {
 
-          this._normalizeDate(value[0]);
+          value[0] = this._getNormalizedDate(value[0]);
         };
       };
-      this.setProperty("value", value);
+      this._value = value;
       this.showValue(value);
       if((this.getConfig("selectionMode") == "single") || ((this.getConfig("selectionMode") == "range") && (value.length >= 1))){
 
@@ -119472,43 +119557,38 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
     },
     getValue : function(){
 
-      var value = this.getProperty("value");
+      var value = this._value;
       return value ? (qx.Bootstrap.isArray(value) ? value : new Date(value)) : null;
     },
     showValue : function(value){
 
       value = qx.Bootstrap.isArray(value) ? value[value.length - 1] : value;
-      this.setProperty("shownValue", value);
+      this._shownValue = value;
       var cssPrefix = this.getCssPrefix();
-      this._forEachElementWrapped(function(item){
+      if(this.getAttribute("tabindex") < 0){
 
-        if(item.getAttribute("tabindex") < 0){
-
-          item.setAttribute("tabindex", 0);
-        };
-        item.find("." + cssPrefix + "-prev").$offFirstCollection("tap", this._prevMonth, item);
-        item.find("." + cssPrefix + "-next").$offFirstCollection("tap", this._nextMonth, item);
-        item.find("." + cssPrefix + "-day").$offFirstCollection("tap", this._selectDay, item);
-        item.$offFirstCollection("focus", this._onFocus, item, true).$offFirstCollection("blur", this._onBlur, item, true);
-      }, this);
+        this.setAttribute("tabindex", 0);
+      };
+      this.find("." + cssPrefix + "-prev").off("tap", this._prevMonth, this);
+      this.find("." + cssPrefix + "-next").off("tap", this._nextMonth, this);
+      this.find("." + cssPrefix + "-day").off("tap", this._selectDay, this);
+      this.off("focus", this._onFocus, this, true).off("blur", this._onBlur, this, true);
       this.setHtml(this._getTable(value));
-      this._forEachElementWrapped(function(item){
-
-        item.find("." + cssPrefix + "-prev").$onFirstCollection("tap", this._prevMonth, item);
-        item.find("." + cssPrefix + "-next").$onFirstCollection("tap", this._nextMonth, item);
-        item.find("td").not(".qx-calendar-invalid").find("." + cssPrefix + "-day").$onFirstCollection("tap", this._selectDay, item);
-        item.$onFirstCollection("focus", this._onFocus, item, true).$onFirstCollection("blur", this._onBlur, item, true);
-      }, this);
+      this.find("." + cssPrefix + "-prev").on("tap", this._prevMonth, this);
+      this.find("." + cssPrefix + "-next").on("tap", this._nextMonth, this);
+      this.find("td").not(".qx-calendar-invalid").find("." + cssPrefix + "-day").on("tap", this._selectDay, this);
+      this.on("focus", this._onFocus, this, true).on("blur", this._onBlur, this, true);
+      this.emit('rendered');
       return this;
     },
     _prevMonth : function(){
 
-      var shownValue = this.getProperty("shownValue");
+      var shownValue = this._shownValue;
       this.showValue(new Date(shownValue.getFullYear(), shownValue.getMonth() - 1));
     },
     _nextMonth : function(){
 
-      var shownValue = this.getProperty("shownValue");
+      var shownValue = this._shownValue;
       this.showValue(new Date(shownValue.getFullYear(), shownValue.getMonth() + 1));
     },
     _selectDay : function(e){
@@ -119518,17 +119598,13 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
       var newValue = new Date(newStr);
       if(this.getConfig("selectionMode") == "range"){
 
-        if(!this.getProperty("__range")){
-
-          this.setProperty("__range", []);
-        };
-        var range = this.getProperty("__range").slice(0);
+        var range = this.__range.slice(0);
         if(range.length == 2){
 
           range = [];
         };
         range.push(newStr);
-        this.setProperty("__range", range);
+        this.__range = range;
         range = range.map(function(item){
 
           return new Date(item);
@@ -119562,7 +119638,7 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
       var minDate = this.getConfig("minDate");
       if(minDate){
 
-        this._normalizeDate(minDate);
+        minDate = this._getNormalizedDate(minDate);
         if(date.getMonth() <= minDate.getMonth()){
 
           prevDisabled = "disabled";
@@ -119572,7 +119648,7 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
       var maxDate = this.getConfig("maxDate");
       if(maxDate){
 
-        this._normalizeDate(maxDate);
+        maxDate = this._getNormalizedDate(maxDate);
         if(date.getMonth() >= maxDate.getMonth()){
 
           nextDisabled = "disabled";
@@ -119604,16 +119680,18 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
       var minDate = this.getConfig("minDate");
       if(minDate){
 
-        this._normalizeDate(minDate);
+        minDate = this._getNormalizedDate(minDate);
       };
       var maxDate = this.getConfig("maxDate");
       if(maxDate){
 
-        this._normalizeDate(maxDate);
+        this._getNormalizedDate(maxDate);
       };
-      if(qx.Bootstrap.isArray(this.getProperty("value"))){
+      var hideDaysOtherMonth = this.getConfig("hideDaysOtherMonth");
+      var disableDaysOtherMonth = this.getConfig("disableDaysOtherMonth");
+      if(qx.Bootstrap.isArray(this._value)){
 
-        valueString = this.getProperty("value").map(function(currentDate){
+        valueString = this._value.map(function(currentDate){
 
           return currentDate.toDateString();
         });
@@ -119625,8 +119703,26 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
         };
         for(var i = 0;i < 7;i++){
 
-          var cssClasses = helpDate.getMonth() !== date.getMonth() ? cssPrefix + "-othermonth" : "";
-          if((this.getConfig("selectionMode") == "range") && qx.Bootstrap.isArray(this.getProperty("value"))){
+          var cssClasses = "";
+          var hidden = "";
+          var disabled = "";
+          if(helpDate.getMonth() !== date.getMonth()){
+
+            if(hideDaysOtherMonth === true && week === 5 && i === 0){
+
+              break;
+            };
+            if((helpDate.getMonth() < date.getMonth() && helpDate.getFullYear() == date.getFullYear()) || (helpDate.getMonth() > date.getMonth() && helpDate.getFullYear() < date.getFullYear())){
+
+              cssClasses += cssPrefix + "-previous-month";
+            } else {
+
+              cssClasses += cssPrefix + "-next-month";
+            };
+            hidden += hideDaysOtherMonth ? "qx-hidden" : "";
+            disabled += disableDaysOtherMonth ? "disabled=disabled" : "";
+          };
+          if((this.getConfig("selectionMode") == "range") && qx.Bootstrap.isArray(this._value)){
 
             if(valueString.indexOf(helpDate.toDateString()) != -1){
 
@@ -119634,18 +119730,23 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
             };
           } else {
 
-            var range = this.getProperty("__range");
-            if(this.getProperty("value")){
+            var range = this.__range;
+            if(this._value){
 
-              value = this.getConfig("selectionMode") == "range" ? new Date(range[range.length - 1]) : this.getProperty("value");
+              value = this.getConfig("selectionMode") == "range" ? new Date(range[range.length - 1]) : this._value;
               cssClasses += helpDate.toDateString() === value.toDateString() ? " " + cssPrefix + "-selected" : "";
             };
           };
+          var isPast = Date.parse(today) > Date.parse(helpDate) && today.toDateString() !== helpDate.toDateString();
+          cssClasses += isPast ? " " + cssPrefix + "-past" : "";
           cssClasses += today.toDateString() === helpDate.toDateString() ? " " + cssPrefix + "-today" : "";
-          var disabled = this.getEnabled() ? "" : "disabled";
-          if((minDate && helpDate < minDate) || (maxDate && helpDate > maxDate) || this.getConfig("selectableWeekDays").indexOf(helpDate.getDay()) == -1){
+          if(disabled === ""){
 
-            disabled = "disabled";
+            disabled = this.getEnabled() ? "" : "disabled=disabled";
+            if((minDate && helpDate < minDate) || (maxDate && helpDate > maxDate) || this.getConfig("selectableWeekDays").indexOf(helpDate.getDay()) == -1){
+
+              disabled = "disabled=disabled";
+            };
           };
           cssClasses += (helpDate.getDay() === 0 || helpDate.getDay() === 6) ? " " + cssPrefix + "-weekend" : " " + cssPrefix + "-weekday";
           data.row.push({
@@ -119653,7 +119754,8 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
             date : helpDate.toDateString(),
             cssPrefix : cssPrefix,
             cssClass : cssClasses,
-            disabled : disabled
+            disabled : disabled,
+            hidden : hidden
           });
           helpDate.setDate(helpDate.getDate() + 1);
         };
@@ -119671,22 +119773,24 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
       helpDate.setDate(helpDate.getDate() - nrDaysOfLastMonth);
       return helpDate;
     },
-    _normalizeDate : function(date){
+    _getNormalizedDate : function(dateIn){
 
+      var date = new Date(dateIn.getTime());
       date.setHours(0);
       date.setMinutes(0);
       date.setSeconds(0);
       date.setMilliseconds(0);
+      return date;
     },
     _onFocus : function(e){
 
-      this.$onFirstCollection("keydown", this._onKeyDown, this);
+      this.on("keydown", this._onKeyDown, this);
     },
     _onBlur : function(e){
 
       if(this.contains(e.getRelatedTarget()).length === 0){
 
-        this.$offFirstCollection("keydown", this._onKeyDown, this);
+        this.off("keydown", this._onKeyDown, this);
       };
     },
     _onKeyDown : function(e){
@@ -119791,11 +119895,11 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
       var list = [],current = range[0];
       var minDate = this.getConfig("minDate") ? this.getConfig("minDate") : new Date(range[0].toDateString());
       var maxDate = this.getConfig("maxDate") ? this.getConfig("maxDate") : new Date(range[1].toDateString());
-      this._normalizeDate(minDate);
-      this._normalizeDate(maxDate);
+      minDate = this._getNormalizedDate(minDate);
+      maxDate = this._getNormalizedDate(maxDate);
       while(current <= range[1]){
 
-        this._normalizeDate(current);
+        current = this._getNormalizedDate(current);
         list.push(new Date(current.toDateString()));
         current.setDate(current.getDate() + 1);
       };
@@ -119820,13 +119924,10 @@ qx.Bootstrap.define("qx.ui.website.Calendar", {
     dispose : function(){
 
       var cssPrefix = this.getCssPrefix();
-      this._forEachElementWrapped(function(item){
-
-        item.find("." + cssPrefix + "-prev").$offFirstCollection("tap", this._prevMonth, item);
-        item.find("." + cssPrefix + "-next").$offFirstCollection("tap", this._nextMonth, item);
-        item.find("." + cssPrefix + "-day").$offFirstCollection("tap", this._selectDay, item);
-        item.$offFirstCollection("focus", this._onFocus, item, true).$offFirstCollection("blur", this._onBlur, item, true).$offFirstCollection("keydown", this._onKeyDown, item);
-      }, this);
+      this.find("." + cssPrefix + "-prev").off("tap", this._prevMonth, this);
+      this.find("." + cssPrefix + "-next").off("tap", this._nextMonth, this);
+      this.find("." + cssPrefix + "-day").off("tap", this._selectDay, this);
+      this.off("focus", this._onFocus, this, true).off("blur", this._onBlur, this, true).off("keydown", this._onKeyDown, this);
       this.setHtml("");
       return this.base(arguments);
     }
@@ -120043,6 +120144,208 @@ qx.Class.define("qx.application.Basic", {
 qx.Bootstrap.define("qx.module.Traversing", {
   statics : {
     EQUALITY_ATTRIBUTES : ["nodeType", "nodeName", "localName", "namespaceURI", "prefix", "nodeValue"],
+    __getAncestors : function(selector, filter){
+
+      var ancestors = [];
+      for(var i = 0;i < this.length;i++){
+
+        var parent = qx.dom.Element.getParentElement(this[i]);
+        while(parent){
+
+          var found = [parent];
+          if(selector && qx.bom.Selector.matches(selector, found).length > 0){
+
+            break;
+          };
+          if(filter){
+
+            found = qx.bom.Selector.matches(filter, found);
+          };
+          ancestors = ancestors.concat(found);
+          parent = qx.dom.Element.getParentElement(parent);
+        };
+      };
+      return qxWeb.$init(ancestors, qxWeb);
+    },
+    __getElementFromArgument : function(arg){
+
+      if(arg instanceof qxWeb){
+
+        return arg[0];
+      } else if(qx.Bootstrap.isString(arg)){
+
+        return qxWeb(arg)[0];
+      };
+      return arg;
+    },
+    __getNodeFromArgument : function(arg){
+
+      if(typeof arg == "string"){
+
+        arg = qxWeb(arg);
+      };
+      if(arg instanceof Array || arg instanceof qxWeb){
+
+        arg = arg[0];
+      };
+      return qxWeb.isNode(arg) ? arg : null;
+    },
+    __getAttributes : function(node){
+
+      var attributes = {
+      };
+      for(var attr in node.attributes){
+
+        if(attr == "length"){
+
+          continue;
+        };
+        var name = node.attributes[attr].name;
+        var value = node.attributes[attr].value;
+        attributes[name] = value;
+      };
+      return attributes;
+    },
+    __hierarchyHelper : function(collection, method, selector){
+
+      var all = [];
+      var Hierarchy = qx.dom.Hierarchy;
+      for(var i = 0,l = collection.length;i < l;i++){
+
+        all.push.apply(all, Hierarchy[method](collection[i]));
+      };
+      var ret = qx.lang.Array.unique(all);
+      if(selector){
+
+        ret = qx.bom.Selector.matches(selector, ret);
+      };
+      return ret;
+    },
+    isElement : function(selector){
+
+      return qx.dom.Node.isElement(qx.module.Traversing.__getElementFromArgument(selector));
+    },
+    isNode : function(selector){
+
+      return qx.dom.Node.isNode(qx.module.Traversing.__getElementFromArgument(selector));
+    },
+    isNodeName : function(selector, nodeName){
+
+      return qx.dom.Node.isNodeName(qx.module.Traversing.__getElementFromArgument(selector), nodeName);
+    },
+    isDocument : function(node){
+
+      if(node instanceof qxWeb){
+
+        node = node[0];
+      };
+      return qx.dom.Node.isDocument(node);
+    },
+    isDocumentFragment : function(node){
+
+      if(node instanceof qxWeb){
+
+        node = node[0];
+      };
+      return qx.dom.Node.isDocumentFragment(node);
+    },
+    getWindow : function(selector){
+
+      return qx.dom.Node.getWindow(qx.module.Traversing.__getElementFromArgument(selector));
+    },
+    isTextNode : function(obj){
+
+      return qx.dom.Node.isText(obj);
+    },
+    isWindow : function(obj){
+
+      if(obj instanceof qxWeb){
+
+        obj = obj[0];
+      };
+      return qx.dom.Node.isWindow(obj);
+    },
+    getDocument : function(selector){
+
+      return qx.dom.Node.getDocument(qx.module.Traversing.__getElementFromArgument(selector));
+    },
+    getNodeName : function(selector){
+
+      return qx.dom.Node.getName(qx.module.Traversing.__getElementFromArgument(selector));
+    },
+    getNodeText : function(selector){
+
+      return qx.dom.Node.getText(qx.module.Traversing.__getElementFromArgument(selector));
+    },
+    isBlockNode : function(selector){
+
+      return qx.dom.Node.isBlockNode(qx.module.Traversing.__getElementFromArgument(selector));
+    },
+    equalNodes : function(node1, node2){
+
+      node1 = qx.module.Traversing.__getNodeFromArgument(node1);
+      node2 = qx.module.Traversing.__getNodeFromArgument(node2);
+      if(!node1 || !node2){
+
+        return false;
+      };
+      if(qx.core.Environment.get("html.node.isequalnode")){
+
+        return node1.isEqualNode(node2);
+      } else {
+
+        if(node1 === node2){
+
+          return true;
+        };
+        var hasAttributes = node1.attributes && node2.attributes;
+        if(hasAttributes && node1.attributes.length !== node2.attributes.length){
+
+          return false;
+        };
+        var hasChildNodes = node1.childNodes && node2.childNodes;
+        if(hasChildNodes && node1.childNodes.length !== node2.childNodes.length){
+
+          return false;
+        };
+        var domAttributes = qx.module.Traversing.EQUALITY_ATTRIBUTES;
+        for(var i = 0,l = domAttributes.length;i < l;i++){
+
+          var domAttrib = domAttributes[i];
+          if(node1[domAttrib] !== node2[domAttrib]){
+
+            return false;
+          };
+        };
+        if(hasAttributes){
+
+          var node1Attributes = qx.module.Traversing.__getAttributes(node1);
+          var node2Attributes = qx.module.Traversing.__getAttributes(node2);
+          for(var attr in node1Attributes){
+
+            if(node1Attributes[attr] !== node2Attributes[attr]){
+
+              return false;
+            };
+          };
+        };
+        if(hasChildNodes){
+
+          for(var j = 0,m = node1.childNodes.length;j < m;j++){
+
+            var child1 = node1.childNodes[j];
+            var child2 = node2.childNodes[j];
+            if(!qx.module.Traversing.equalNodes(child1, child2)){
+
+              return false;
+            };
+          };
+        };
+        return true;
+      };
+    }
+  },
+  members : {
     add : function(el){
 
       if(el instanceof qxWeb){
@@ -120119,29 +120422,6 @@ qx.Bootstrap.define("qx.module.Traversing", {
     getAncestorsUntil : function(selector, filter){
 
       return this.__getAncestors(selector, filter);
-    },
-    __getAncestors : function(selector, filter){
-
-      var ancestors = [];
-      for(var i = 0;i < this.length;i++){
-
-        var parent = qx.dom.Element.getParentElement(this[i]);
-        while(parent){
-
-          var found = [parent];
-          if(selector && qx.bom.Selector.matches(selector, found).length > 0){
-
-            break;
-          };
-          if(filter){
-
-            found = qx.bom.Selector.matches(filter, found);
-          };
-          ancestors = ancestors.concat(found);
-          parent = qx.dom.Element.getParentElement(parent);
-        };
-      };
-      return qxWeb.$init(ancestors, qxWeb);
     },
     getClosest : function(selector){
 
@@ -120334,222 +120614,13 @@ qx.Bootstrap.define("qx.module.Traversing", {
         return false;
       };
       return qx.dom.Hierarchy.isRendered(this[0]);
-    },
-    __getElementFromArgument : function(arg){
-
-      if(arg instanceof qxWeb){
-
-        return arg[0];
-      } else if(qx.Bootstrap.isString(arg)){
-
-        return qxWeb(arg)[0];
-      };
-      return arg;
-    },
-    isElement : function(selector){
-
-      return qx.dom.Node.isElement(qx.module.Traversing.__getElementFromArgument(selector));
-    },
-    isNode : function(selector){
-
-      return qx.dom.Node.isNode(qx.module.Traversing.__getElementFromArgument(selector));
-    },
-    isNodeName : function(selector, nodeName){
-
-      return qx.dom.Node.isNodeName(qx.module.Traversing.__getElementFromArgument(selector), nodeName);
-    },
-    isDocument : function(node){
-
-      return qx.dom.Node.isDocument(node);
-    },
-    isDocumentFragment : function(node){
-
-      return qx.dom.Node.isDocumentFragment(node);
-    },
-    getWindow : function(selector){
-
-      return qx.dom.Node.getWindow(qx.module.Traversing.__getElementFromArgument(selector));
-    },
-    isTextNode : function(obj){
-
-      return qx.dom.Node.isText(obj);
-    },
-    isWindow : function(obj){
-
-      if(obj instanceof qxWeb){
-
-        obj = obj[0];
-      };
-      return qx.dom.Node.isWindow(obj);
-    },
-    getDocument : function(selector){
-
-      return qx.dom.Node.getDocument(qx.module.Traversing.__getElementFromArgument(selector));
-    },
-    getNodeName : function(selector){
-
-      return qx.dom.Node.getName(qx.module.Traversing.__getElementFromArgument(selector));
-    },
-    getNodeText : function(selector){
-
-      return qx.dom.Node.getText(qx.module.Traversing.__getElementFromArgument(selector));
-    },
-    isBlockNode : function(selector){
-
-      return qx.dom.Node.isBlockNode(qx.module.Traversing.__getElementFromArgument(selector));
-    },
-    equalNodes : function(node1, node2){
-
-      node1 = qx.module.Traversing.__getNodeFromArgument(node1);
-      node2 = qx.module.Traversing.__getNodeFromArgument(node2);
-      if(!node1 || !node2){
-
-        return false;
-      };
-      if(qx.core.Environment.get("html.node.isequalnode")){
-
-        return node1.isEqualNode(node2);
-      } else {
-
-        if(node1 === node2){
-
-          return true;
-        };
-        var hasAttributes = node1.attributes && node2.attributes;
-        if(hasAttributes && node1.attributes.length !== node2.attributes.length){
-
-          return false;
-        };
-        var hasChildNodes = node1.childNodes && node2.childNodes;
-        if(hasChildNodes && node1.childNodes.length !== node2.childNodes.length){
-
-          return false;
-        };
-        var domAttributes = qx.module.Traversing.EQUALITY_ATTRIBUTES;
-        for(var i = 0,l = domAttributes.length;i < l;i++){
-
-          var domAttrib = domAttributes[i];
-          if(node1[domAttrib] !== node2[domAttrib]){
-
-            return false;
-          };
-        };
-        if(hasAttributes){
-
-          var node1Attributes = qx.module.Traversing.__getAttributes(node1);
-          var node2Attributes = qx.module.Traversing.__getAttributes(node2);
-          for(var attr in node1Attributes){
-
-            if(node1Attributes[attr] !== node2Attributes[attr]){
-
-              return false;
-            };
-          };
-        };
-        if(hasChildNodes){
-
-          for(var j = 0,m = node1.childNodes.length;j < m;j++){
-
-            var child1 = node1.childNodes[j];
-            var child2 = node2.childNodes[j];
-            if(!qx.module.Traversing.equalNodes(child1, child2)){
-
-              return false;
-            };
-          };
-        };
-        return true;
-      };
-    },
-    __getNodeFromArgument : function(arg){
-
-      if(typeof arg == "string"){
-
-        arg = qxWeb(arg);
-      };
-      if(arg instanceof Array || arg instanceof qxWeb){
-
-        arg = arg[0];
-      };
-      return qxWeb.isNode(arg) ? arg : null;
-    },
-    __getAttributes : function(node){
-
-      var attributes = {
-      };
-      for(var attr in node.attributes){
-
-        if(attr == "length"){
-
-          continue;
-        };
-        var name = node.attributes[attr].name;
-        var value = node.attributes[attr].value;
-        attributes[name] = value;
-      };
-      return attributes;
-    },
-    __hierarchyHelper : function(collection, method, selector){
-
-      var all = [];
-      var Hierarchy = qx.dom.Hierarchy;
-      for(var i = 0,l = collection.length;i < l;i++){
-
-        all.push.apply(all, Hierarchy[method](collection[i]));
-      };
-      var ret = qx.lang.Array.unique(all);
-      if(selector){
-
-        ret = qx.bom.Selector.matches(selector, ret);
-      };
-      return ret;
     }
   },
   defer : function(statics){
 
+    qxWeb.$attachAll(this);
     qxWeb.$attach({
-      "add" : statics.add,
-      "getChildren" : statics.getChildren,
-      "forEach" : statics.forEach,
-      "getParents" : statics.getParents,
-      "getAncestors" : statics.getAncestors,
-      "getAncestorsUntil" : statics.getAncestorsUntil,
-      "__getAncestors" : statics.__getAncestors,
-      "getClosest" : statics.getClosest,
-      "find" : statics.find,
-      "getContents" : statics.getContents,
-      "is" : statics.is,
-      "eq" : statics.eq,
-      "getFirst" : statics.getFirst,
-      "getLast" : statics.getLast,
-      "has" : statics.has,
-      "getNext" : statics.getNext,
-      "getNextAll" : statics.getNextAll,
-      "getNextUntil" : statics.getNextUntil,
-      "getPrev" : statics.getPrev,
-      "getPrevAll" : statics.getPrevAll,
-      "getPrevUntil" : statics.getPrevUntil,
-      "getSiblings" : statics.getSiblings,
-      "not" : statics.not,
-      "getOffsetParent" : statics.getOffsetParent,
-      "isRendered" : statics.isRendered,
-      "isChildOf" : statics.isChildOf,
-      "contains" : statics.contains
-    });
-    qxWeb.$attachStatic({
-      "isElement" : statics.isElement,
-      "isNode" : statics.isNode,
-      "isNodeName" : statics.isNodeName,
-      "isDocument" : statics.isDocument,
-      "isDocumentFragment" : statics.isDocumentFragment,
-      "getDocument" : statics.getDocument,
-      "getWindow" : statics.getWindow,
-      "isWindow" : statics.isWindow,
-      "isBlockNode" : statics.isBlockNode,
-      "getNodeName" : statics.getNodeName,
-      "getNodeText" : statics.getNodeText,
-      "isTextNode" : statics.isTextNode,
-      "equalNodes" : statics.equalNodes
+      "__getAncestors" : statics.__getAncestors
     });
   }
 });
@@ -120563,39 +120634,6 @@ qx.Bootstrap.define("qx.module.Placeholder", {
 
         qxWeb("input[placeholder], textarea[placeholder]").updatePlaceholder();
       };
-    },
-    updatePlaceholder : function(){
-
-      if(!qxWeb.env.get("css.placeholder")){
-
-        for(var i = 0;i < this.length;i++){
-
-          var item = qxWeb(this[i]);
-          var placeholder = item.getAttribute("placeholder");
-          var tagName = item.getProperty("tagName");
-          if(!placeholder || (tagName != "TEXTAREA" && tagName != "INPUT")){
-
-            continue;
-          };
-          var placeholderEl = item.getProperty(qx.module.Placeholder.PLACEHOLDER_NAME);
-          if(!placeholderEl){
-
-            placeholderEl = qx.module.Placeholder.__createPlaceholderElement(item);
-          };
-          var itemInBody = item.isRendered();
-          var placeholderElInBody = placeholderEl.isRendered();
-          if(itemInBody && !placeholderElInBody){
-
-            item.before(placeholderEl);
-          } else if(!itemInBody && placeholderElInBody){
-
-            placeholderEl.remove();
-            return this;
-          };
-          qx.module.Placeholder.__syncStyles(item);
-        };
-      };
-      return this;
     },
     __syncStyles : function(item){
 
@@ -120647,16 +120685,44 @@ qx.Bootstrap.define("qx.module.Placeholder", {
       return placeholderEl;
     }
   },
+  members : {
+    updatePlaceholder : function(){
+
+      if(!qxWeb.env.get("css.placeholder")){
+
+        for(var i = 0;i < this.length;i++){
+
+          var item = qxWeb(this[i]);
+          var placeholder = item.getAttribute("placeholder");
+          var tagName = item.getProperty("tagName");
+          if(!placeholder || (tagName != "TEXTAREA" && tagName != "INPUT")){
+
+            continue;
+          };
+          var placeholderEl = item.getProperty(qx.module.Placeholder.PLACEHOLDER_NAME);
+          if(!placeholderEl){
+
+            placeholderEl = qx.module.Placeholder.__createPlaceholderElement(item);
+          };
+          var itemInBody = item.isRendered();
+          var placeholderElInBody = placeholderEl.isRendered();
+          if(itemInBody && !placeholderElInBody){
+
+            item.before(placeholderEl);
+          } else if(!itemInBody && placeholderElInBody){
+
+            placeholderEl.remove();
+            return this;
+          };
+          qx.module.Placeholder.__syncStyles(item);
+        };
+      };
+      return this;
+    }
+  },
   defer : function(statics){
 
-    qxWeb.$attachStatic({
-      "placeholder" : {
-        update : statics.update
-      }
-    });
-    qxWeb.$attach({
-      "updatePlaceholder" : statics.updatePlaceholder
-    });
+    qxWeb.$attachAll(this, "placeholder");
   }
 });
 
@@ -120822,22 +120888,6 @@ qx.Mixin.define("qx.dev.unit.MRequirements", {
     hasWebkit : function(){
 
       return qx.core.Environment.get("engine.name") == "webkit";
-    },
-    hasNoSelenium : function(){
-
-      if(window.selenium){
-
-        return false;
-      };
-      var win = window.top || window;
-      var opener = win.opener || win;
-      try{
-
-        return typeof opener.selenium == "undefined";
-      } catch(ex) {
-
-        return win.name.indexOf("selenium") < 0;
-      };
     },
     hasNoWin7 : function(){
 
@@ -122500,7 +122550,7 @@ qx.Class.define("qx.util.Validate", {
     checkEmail : function(value, formItem, errorMessage){
 
       errorMessage = errorMessage || qx.locale.Manager.tr("'%1' is not an email address.", (value || ""));
-      var reg = /^([A-Za-z0-9_\-\.])+\@([A-Za-z0-9_\-\.])+\.([A-Za-z]{2,})$/;
+      var reg = /^([A-Za-z0-9_\-\.\+])+\@([A-Za-z0-9_\-\.])+\.([A-Za-z]{2,})$/;
       if(reg.test(value) === false){
 
         throw new qx.core.ValidationError("Validation Error", errorMessage);
@@ -123609,6 +123659,532 @@ qx.Bootstrap.define("qx.module.event.TouchHandler", {
   defer : function(statics){
 
     qxWeb.$registerEventHook(statics.TYPES, statics.register, statics.unregister);
+  }
+});
+
+qx.Bootstrap.define("qx.module.event.Swipe", {
+  statics : {
+    TYPES : ["swipe"],
+    BIND_METHODS : ["getStartTime", "getDuration", "getAxis", "getDirection", "getVelocity", "getDistance"],
+    getStartTime : function(){
+
+      return this._original.swipe.startTime;
+    },
+    getDuration : function(){
+
+      return this._original.swipe.duration;
+    },
+    getAxis : function(){
+
+      return this._original.swipe.axis;
+    },
+    getDirection : function(){
+
+      return this._original.swipe.direction;
+    },
+    getVelocity : function(){
+
+      return this._original.swipe.velocity;
+    },
+    getDistance : function(){
+
+      return this._original.swipe.distance;
+    },
+    normalize : function(event, element){
+
+      if(!event){
+
+        return event;
+      };
+      var bindMethods = qx.module.event.Swipe.BIND_METHODS;
+      for(var i = 0,l = bindMethods.length;i < l;i++){
+
+        if(typeof event[bindMethods[i]] != "function"){
+
+          event[bindMethods[i]] = qx.module.event.Swipe[bindMethods[i]].bind(event);
+        };
+      };
+      return event;
+    }
+  },
+  defer : function(statics){
+
+    qxWeb.$registerEventNormalization(qx.module.event.Swipe.TYPES, statics.normalize);
+  }
+});
+
+qx.Bootstrap.define("qx.ui.website.Carousel", {
+  extend : qx.ui.website.Widget,
+  statics : {
+    _config : {
+      pageSwitchDuration : 500
+    },
+    carousel : function(){
+
+      var carousel = new qx.ui.website.Carousel(this);
+      carousel.init();
+      return carousel;
+    }
+  },
+  construct : function(selector, context){
+
+    this.base(arguments, selector, context);
+  },
+  members : {
+    __active : null,
+    __pageContainer : null,
+    __scrollContainer : null,
+    __paginationLabels : null,
+    __startPosLeft : null,
+    __pagination : null,
+    _ie9 : false,
+    __blocked : false,
+    init : function(){
+
+      if(!this.base(arguments)){
+
+        return false;
+      };
+      this._ie9 = qx.core.Environment.get("browser.documentmode") === 9;
+      if(this._ie9){
+
+        this.setConfig("pageSwitchDuration", 10);
+      } else {
+
+        this.addClass("qx-flex-ready");
+      };
+      qxWeb(window).on("resize", this._onResize, this);
+      var prefix = this.getCssPrefix();
+      this.__scrollContainer = qxWeb.create("<div>").addClass(prefix + "-container").appendTo(this);
+      this.__pageContainer = qxWeb.create("<div>").addClass("qx-hbox").setStyle("height", "100%").appendTo(this.__scrollContainer);
+      this.__paginationLabels = [];
+      this.__pagination = qxWeb.create("<div>").addClasses([prefix + "-pagination", "qx-hbox", "qx-flex1"]).setStyle("visibility", "excluded").appendTo(this);
+      if(this._ie9){
+
+        this.__pageContainer.setStyle("display", "table");
+        this.__pagination.setStyle("textAlign", "center");
+      } else {
+
+        this.on("trackstart", this._onTrackStart, this).on("track", this._onTrack, this).on("trackend", this._onTrackEnd, this);
+      };
+      this.on("swipe", this._onSwipe, this);
+      this.render();
+      return true;
+    },
+    render : function(){
+
+      var pages = this.find("." + this.getCssPrefix() + "-page");
+      pages.forEach(function(page){
+
+        this.addPage(qxWeb(page));
+      }.bind(this));
+      if(pages.length > 0){
+
+        this.setActive(pages.eq(0));
+      };
+      return this;
+    },
+    setActive : function(page){
+
+      var old = this.__active;
+      this.__active = page;
+      this._update();
+      var data = {
+        value : page,
+        old : old,
+        target : this
+      };
+      this.emit("changeActive", data);
+    },
+    getActive : function(){
+
+      return this.__active;
+    },
+    nextPage : function(){
+
+      var pages = this._getPages();
+      if(pages.length == 0){
+
+        return this;
+      };
+      var next = this.getActive().getNext();
+      if(pages.length > 2){
+
+        if(next.length === 0){
+
+          next = pages.eq(0);
+        };
+      };
+      if(next.length > 0){
+
+        this.setActive(next);
+      };
+      return this;
+    },
+    previousPage : function(){
+
+      var pages = this._getPages();
+      if(pages.length == 0){
+
+        return this;
+      };
+      var prev = this.getActive().getPrev();
+      if(pages.length > 2){
+
+        if(prev.length == 0){
+
+          prev = pages.eq(pages.length - 1);
+        };
+      };
+      if(prev.length > 0){
+
+        this.setActive(prev);
+      };
+      return this;
+    },
+    addPage : function(child){
+
+      child.addClasses(["qx-flex1", this.getCssPrefix() + "-page"]).appendTo(this.__pageContainer);
+      if(this.find("." + this.getCssPrefix() + "-page").length > this.__paginationLabels.length){
+
+        var paginationLabel = this._createPaginationLabel();
+        this.__paginationLabels.push(paginationLabel);
+        this.__pagination.append(paginationLabel);
+      };
+      this._updateWidth();
+      if(!this.getActive()){
+
+        this.setActive(child);
+      } else if(this._getPages().length > 2){
+
+        this._updateOrder();
+      };
+      if(this._ie9){
+
+        child.setStyle("display", "table-cell");
+      };
+      this.find(".scroll").setStyle("touchAction", "pan-y");
+      if(this._getPages().length === 3 && !this._ie9){
+
+        this.__scrollContainer.translate([(-this.getWidth()) + "px", 0, 0]);
+      };
+      this._updatePagination();
+    },
+    removePage : function(child){
+
+      child.remove();
+      if(this._getPages().length == 0){
+
+        this.__pagination.empty();
+        this.__paginationLabels = [];
+        this.setActive(null);
+        return;
+      };
+      this._updateWidth();
+      if(this.getActive()[0] == child[0]){
+
+        this.setActive(this._getPages().eq(0));
+      } else if(this._getPages().length > 2){
+
+        this._updateOrder();
+      } else {
+
+        this._setOrder(this._getPages(), 0);
+      };
+      this.__paginationLabels.splice(child.priorPosition, 1)[0].remove();
+      for(var i = 0;i < this.__paginationLabels.length;i++){
+
+        this.__paginationLabels[i].getChildren(".label").setHtml((i + 1) + "");
+      };
+      this._updatePagination();
+    },
+    _update : function(){
+
+      if(!this.getActive()){
+
+        return;
+      };
+      if(this._getPages().length < 2){
+
+        return;
+      } else if(this._getPages().length == 2){
+
+        if(this._getPages()[0] === this.getActive()[0]){
+
+          this._translateTo(0);
+        } else {
+
+          this._translateTo(this.getWidth());
+        };
+        this._updatePagination();
+        return;
+      };
+      var left;
+      if(!this._ie9){
+
+        var direction = this._updateOrder();
+        if(direction == "right"){
+
+          left = this._getPositionLeft() - this.__scrollContainer.getWidth();
+        } else if(direction == "left"){
+
+          left = this._getPositionLeft() + this.__scrollContainer.getWidth();
+        } else if(this._getPages().length >= 3){
+
+          this._translateTo(this.getWidth());
+          return;
+        } else {
+
+          return;
+        };;
+        if(left !== undefined){
+
+          this.__scrollContainer.translate([(-left) + "px", 0, 0]);
+          this._translateTo(this.getWidth());
+        };
+      } else {
+
+        var index = this._getPages().indexOf(this.getActive());
+        left = index * this.getWidth();
+        this._translateTo(left);
+      };
+      this._updatePagination();
+    },
+    _updateOrder : function(){
+
+      if(this._ie9){
+
+        return "left";
+      };
+      var scrollDirection;
+      var pages = this._getPages();
+      var orderBefore = this._getOrder(this.getActive());
+      if(orderBefore > 0){
+
+        scrollDirection = "right";
+      } else if(orderBefore < 0){
+
+        scrollDirection = "left";
+      };
+      var activeIndex = pages.indexOf(this.getActive());
+      this._setOrder(this.getActive(), 0);
+      var order = 1;
+      for(var i = activeIndex + 1;i < pages.length;i++){
+
+        if(activeIndex === 0 && i == pages.length - 1){
+
+          order = -1;
+        };
+        this._setOrder(pages.eq(i), order++);
+      };
+      for(i = 0;i < activeIndex;i++){
+
+        if(i == activeIndex - 1){
+
+          order = -1;
+        };
+        this._setOrder(pages.eq(i), order++);
+      };
+      return scrollDirection;
+    },
+    _updateWidth : function(){
+
+      if(!this.isRendered() || this.getProperty("offsetWidth") === 0){
+
+        this.setStyle("visibility", "hidden");
+        if(!this.hasListener("appear", this._updateWidth, this)){
+
+          this.once("appear", this._updateWidth, this);
+        };
+        return;
+      };
+      if(this._getPositionLeft() === 0 && this._getPages().length > 2 && !this._ie9){
+
+        this.__scrollContainer.translate([(-this.getWidth()) + "px", 0, 0]);
+      };
+      var containerWidth = this.getWidth() * this._getPages().length;
+      this.__pageContainer.setStyle("width", containerWidth + "px");
+      this._getPages().setStyle("width", this.getWidth() + "px");
+      this.setStyle("visibility", "visible");
+    },
+    _onTrackStart : function(){
+
+      if(this.__blocked){
+
+        return;
+      };
+      this.__startPosLeft = this._getPositionLeft();
+      this.__scrollContainer.stop().translate([(-Math.round(this.__startPosLeft)) + "px", 0, 0]);
+    },
+    _onTrack : function(e){
+
+      if(this.__blocked){
+
+        return;
+      };
+      if(e.delta.axis == "x" && this._getPages().length > 2){
+
+        this.__scrollContainer.translate([-(this.__startPosLeft - e.delta.x) + "px", 0, 0]);
+      };
+    },
+    _onTrackEnd : function(){
+
+      if(this.__startPosLeft == null || this.__blocked){
+
+        return;
+      };
+      window.setTimeout(function(){
+
+        if(this._getPages().length < 3 || this.__scrollContainer.isPlaying()){
+
+          return;
+        };
+        this.__startPosLeft = null;
+        var width = this.getWidth();
+        var pages = this._getPages();
+        var oldActive = this.getActive();
+        if(this._getPositionLeft() < (width - (width / 2))){
+
+          var prev = this.getActive().getPrev();
+          if(prev.length == 0){
+
+            prev = pages.eq(pages.length - 1);
+          };
+          this.setActive(prev);
+        } else if(this._getPositionLeft() > (width + width / 2)){
+
+          var next = this.getActive().getNext();
+          if(next.length == 0){
+
+            next = pages.eq(0);
+          };
+          this.setActive(next);
+        };
+        if(this.getActive() == oldActive){
+
+          this._update();
+        };
+      }.bind(this), 0);
+    },
+    _onSwipe : function(e){
+
+      if(this.__blocked){
+
+        return;
+      };
+      var velocity = Math.abs(e.getVelocity());
+      if(e.getAxis() == "x" && velocity > 0.25){
+
+        if(e.getDirection() == "left"){
+
+          this.nextPage();
+        } else if(e.getDirection() == "right"){
+
+          this.previousPage();
+        };
+      };
+    },
+    _createPaginationLabel : function(){
+
+      var paginationIndex = this._getPages().length;
+      return qxWeb.create('<div class="' + this.getCssPrefix() + '-pagination-label"></div>').on("tap", this._onPaginationLabelTap, this).append(qxWeb.create('<div class="label">' + paginationIndex + '</div>'));
+    },
+    _onPaginationLabelTap : function(e){
+
+      this.__paginationLabels.forEach(function(label, index){
+
+        if(label[0] === e.currentTarget){
+
+          var pages = this._getPages();
+          if(pages.length === 2){
+
+            this.setActive(pages.eq(index));
+            return;
+          };
+          var activeIndex = pages.indexOf(this.getActive());
+          var distance = index - activeIndex;
+          this._setOrder(pages, 0);
+          this.__scrollContainer.translate([(-activeIndex * this.getWidth()) + "px", 0, 0]);
+          this.__blocked = true;
+          this._translateTo((activeIndex + distance) * this.getWidth());
+          this.__scrollContainer.once("animationEnd", function(page){
+
+            this.__blocked = false;
+            this.__scrollContainer.translate([(-this.getWidth()) + "px", 0, 0]);
+            this.setActive(page);
+            this._updatePagination();
+          }.bind(this, pages.eq(index)));
+        };
+      }.bind(this));
+    },
+    _updatePagination : function(){
+
+      this._getPages().length < 2 ? this.__pagination.setStyle("visibility", "excluded") : this.__pagination.setStyle("visibility", "visible");
+      this.__pagination.find("." + this.getCssPrefix() + "-pagination-label").removeClass("active");
+      var pages = this._getPages();
+      this.__paginationLabels[pages.indexOf(this.getActive())].addClass("active");
+    },
+    _onResize : function(){
+
+      this._updateWidth();
+      if(this._getPages().length > 2){
+
+        this.__scrollContainer.translate([(-this.getWidth()) + "px", 0, 0]);
+      };
+    },
+    _translateTo : function(left){
+
+      this.__scrollContainer.animate({
+        duration : this.getConfig("pageSwitchDuration"),
+        keep : 100,
+        timing : "ease",
+        keyFrames : {
+          '0' : {
+          },
+          '100' : {
+            translate : [(-left) + "px", 0, 0]
+          }
+        }
+      });
+    },
+    _setOrder : function(col, value){
+
+      col.setStyles({
+        order : value,
+        msFlexOrder : value
+      });
+    },
+    _getOrder : function(col){
+
+      var order = parseInt(col.getStyle("order"));
+      if(isNaN(order)){
+
+        order = parseInt(col.getStyle("msFlexOrder"));
+      };
+      return order;
+    },
+    _getPages : function(){
+
+      return this.__pageContainer.find("." + this.getCssPrefix() + "-page");
+    },
+    _getPositionLeft : function(){
+
+      var containerRect = this.__scrollContainer[0].getBoundingClientRect();
+      var parentRect = this[0].getBoundingClientRect();
+      return -(containerRect.left - parentRect.left);
+    },
+    dispose : function(){
+
+      qxWeb(window).off("resize", this._onResize, this);
+      this.off("trackstart", this._onTrackStart, this).off("track", this._onTrack, this).off("swipe", this._onSwipe, this).off("trackend", this._onTrackEnd, this);
+      return this.base(arguments);
+    }
+  },
+  defer : function(statics){
+
+    qxWeb.$attach({
+      carousel : statics.carousel
+    });
   }
 });
 
@@ -124794,7 +125370,9 @@ qxWeb.define("qx.module.Blocker", {
         };
       });
       return blockerElements;
-    },
+    }
+  },
+  members : {
     block : function(color, opacity, zIndex){
 
       if(!this[0]){
@@ -124828,11 +125406,7 @@ qxWeb.define("qx.module.Blocker", {
   },
   defer : function(statics){
 
-    qxWeb.$attach({
-      "block" : statics.block,
-      "unblock" : statics.unblock,
-      "getBlocker" : statics.getBlocker
-    });
+    qxWeb.$attachAll(this);
   }
 });
 
@@ -125497,9 +126071,10 @@ qx.Class.define("qx.ui.mobile.form.Group", {
   }
 });
 
-qx.Bootstrap.define("qx.ui.website.DatePicker", {
+qx.Bootstrap.define('qx.ui.website.DatePicker', {
   extend : qx.ui.website.Widget,
   statics : {
+    __validPositions : null,
     _config : {
       format : function(date){
 
@@ -125507,7 +126082,8 @@ qx.Bootstrap.define("qx.ui.website.DatePicker", {
       },
       readonly : true,
       icon : null,
-      mode : 'input'
+      mode : 'input',
+      position : 'bottom-left'
     },
     datepicker : function(date){
 
@@ -125521,13 +126097,13 @@ qx.Bootstrap.define("qx.ui.website.DatePicker", {
     this.base(arguments, selector, context);
   },
   members : {
+    _calendarId : null,
+    _iconId : null,
+    _uniqueId : null,
     getCalendar : function(){
 
       var calendarCollection = qxWeb();
-      this._forEachElementWrapped(function(datepicker){
-
-        calendarCollection = calendarCollection.concat(qxWeb('div#' + datepicker.getProperty('calendarId')));
-      });
+      calendarCollection = calendarCollection.concat(qxWeb('div#' + this._calendarId));
       return calendarCollection;
     },
     init : function(date){
@@ -125536,38 +126112,45 @@ qx.Bootstrap.define("qx.ui.website.DatePicker", {
 
         return false;
       };
-      this._forEachElementWrapped(function(datepicker){
+      var uniqueId = Math.round(Math.random() * 10000);
+      this._uniqueId = uniqueId;
+      this.__setReadOnly(this);
+      this.__setIcon(this);
+      this.__addInputListener(this);
+      var calendarId = 'datepicker-calendar-' + uniqueId;
+      var calendar = qxWeb.create('<div id="' + calendarId + '"></div>').calendar();
+      calendar.on('tap', this._onCalendarTap);
+      calendar.appendTo(document.body).hide();
+      this._calendarId = calendarId;
+      var bodyElement = qxWeb.getDocument(this).body;
+      qxWeb(bodyElement).on('tap', this._onBodyTap, this);
+      calendar.on('changeValue', this._calendarChangeValue, this);
+      if(date !== undefined){
 
-        var uniqueId = Math.round(Math.random() * 10000);
-        datepicker.setProperty('uniqueId', uniqueId);
-        this.__setReadOnly(datepicker);
-        this.__setIcon(datepicker);
-        this.__addInputListener(datepicker);
-        var calendarId = 'datepicker-calendar-' + uniqueId;
-        var calendar = qxWeb.create('<div id="' + calendarId + '"></div>').calendar();
-        calendar.on('tap', this._onCalendarTap);
-        calendar.appendTo(document.body).hide();
-        datepicker.setProperty('calendarId', calendarId);
-        var bodyElement = qxWeb.getDocument(datepicker).body;
-        qxWeb(bodyElement).on('tap', datepicker._onBodyTap, datepicker);
-        calendar.on('changeValue', datepicker._calendarChangeValue, datepicker);
-        if(date !== undefined){
-
-          calendar.setValue(date);
-        };
-      });
+        calendar.setValue(date);
+      };
       return true;
     },
     render : function(){
 
       this.getCalendar().render();
-      this._forEachElementWrapped(function(datepicker){
-
-        this.__setReadOnly(datepicker);
-        this.__setIcon(datepicker);
-        this.__addInputListener(datepicker);
-      });
+      this.__setReadOnly(this);
+      this.__setIcon(this);
+      this.__addInputListener(this);
       this.setEnabled(this.getEnabled());
+      return this;
+    },
+    setConfig : function(name, config){
+
+      if(name === 'position'){
+
+        var validPositions = qx.ui.website.DatePicker.__validPositions;
+        if(validPositions.indexOf(config) === -1){
+
+          throw new Error('Wrong config value for "position"! ' + 'Only the values "' + validPositions.join('", "') + '" are supported!');
+        };
+      };
+      this.base(arguments, name, config);
       return this;
     },
     _onTap : function(e){
@@ -125576,13 +126159,13 @@ qx.Bootstrap.define("qx.ui.website.DatePicker", {
 
         return;
       };
-      var calendar = qxWeb('div#' + this.getProperty('calendarId'));
-      if(calendar.getStyle("display") == "none"){
+      var calendar = this.getCalendar();
+      if(calendar.getStyle('display') == 'none'){
 
-        this.getCalendar().show().placeTo(this, 'bottom-left');
+        calendar.setStyle('position', 'absolute').show().placeTo(this, this.getConfig('position'));
       } else {
 
-        this.getCalendar().hide();
+        calendar.hide();
       };
     },
     _onCalendarTap : function(e){
@@ -125598,7 +126181,7 @@ qx.Bootstrap.define("qx.ui.website.DatePicker", {
       };
       if(this.getConfig('icon') !== null){
 
-        var icon = qxWeb('#' + this.getProperty('iconId'));
+        var icon = qxWeb('#' + this._iconId);
         if(icon.length > 0 && target.length > 0 && icon[0] == target[0]){
 
           return;
@@ -125634,7 +126217,7 @@ qx.Bootstrap.define("qx.ui.website.DatePicker", {
       var icon;
       if(collection.getConfig('icon') === null){
 
-        icon = collection.getNext('img#' + collection.getProperty('iconId'));
+        icon = collection.getNext('img#' + collection._iconId);
         if(icon.length === 1){
 
           icon.off('tap', this._onTap, collection);
@@ -125642,10 +126225,10 @@ qx.Bootstrap.define("qx.ui.website.DatePicker", {
         };
       } else {
 
-        var iconId = 'datepicker-icon-' + collection.getProperty('uniqueId');
-        if(collection.getProperty('iconId') === undefined){
+        var iconId = 'datepicker-icon-' + collection._uniqueId;
+        if(collection._iconId == undefined){
 
-          collection.setProperty('iconId', iconId);
+          collection._iconId = iconId;
           icon = qxWeb.create('<img>');
           icon.setAttributes({
             id : iconId,
@@ -125655,7 +126238,10 @@ qx.Bootstrap.define("qx.ui.website.DatePicker", {
           var openingMode = collection.getConfig('mode');
           if(openingMode === 'icon' || openingMode === 'both'){
 
-            icon.on('tap', this._onTap, collection);
+            if(!icon.hasListener('tap', this._onTap, collection)){
+
+              icon.on('tap', this._onTap, collection);
+            };
           };
           icon.insertAfter(collection);
         };
@@ -125665,26 +126251,26 @@ qx.Bootstrap.define("qx.ui.website.DatePicker", {
 
       if(collection.getConfig('mode') === 'icon'){
 
-        collection.$offFirstCollection('tap', collection._onTap);
+        collection.off('tap', collection._onTap);
       } else {
 
-        collection.$onFirstCollection('tap', collection._onTap);
+        if(!collection.hasListener('tap', collection._onTap)){
+
+          collection.on('tap', collection._onTap);
+        };
       };
     },
     dispose : function(){
 
-      this._forEachElementWrapped(function(datepicker){
-
-        datepicker.removeAttribute('readonly');
-        datepicker.getNext('img#' + datepicker.getProperty('iconId')).remove();
-        datepicker.$offFirstCollection('tap', datepicker._onTap);
-        var bodyElement = qxWeb.getDocument(datepicker).body;
-        qxWeb(bodyElement).off('tap', datepicker._onBodyTap, datepicker);
-        datepicker.getCalendar().off('changeValue', this._calendarChangeValue, datepicker).off('tap', this._onCalendarTap);
-        var calendar = qxWeb('div#' + datepicker.getProperty('calendarId'));
-        calendar.remove();
-        calendar.dispose();
-      });
+      this.removeAttribute('readonly');
+      this.getNext('img#' + this._iconId).remove();
+      this.off('tap', this._onTap);
+      var bodyElement = qxWeb.getDocument(this).body;
+      qxWeb(bodyElement).off('tap', this._onBodyTap, this);
+      this.getCalendar().off('changeValue', this._calendarChangeValue, this).off('tap', this._onCalendarTap);
+      var calendar = qxWeb('div#' + this._calendarId);
+      calendar.remove();
+      calendar.dispose();
       return this.base(arguments);
     }
   },
@@ -125693,6 +126279,7 @@ qx.Bootstrap.define("qx.ui.website.DatePicker", {
     qxWeb.$attach({
       datepicker : statics.datepicker
     });
+    statics.__validPositions = ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right', 'left-top', 'left-middle', 'left-bottom', 'right-top', 'right-middle', 'right-bottom'];
   }
 });
 
@@ -125850,13 +126437,7 @@ qx.Bootstrap.define("qx.module.Io", {
   },
   defer : function(statics){
 
-    qxWeb.$attachStatic({
-      io : {
-        xhr : statics.xhr,
-        script : statics.script,
-        jsonp : statics.jsonp
-      }
-    });
+    qxWeb.$attachAll(this, "io");
   }
 });
 
@@ -126897,7 +127478,7 @@ qx.Class.define("qx.ui.mobile.container.Carousel", {
       var transformMatrix = qx.bom.element.Style.get(this.__carouselScroller.getContentElement(), "transform");
       var transformValueArray = transformMatrix.substr(7, transformMatrix.length - 8).split(', ');
       var i = 4;
-      if('MSCSSMatrix' in window){
+      if('MSCSSMatrix' in window && !('WebKitCSSMatrix' in window)){
 
         i = transformValueArray.length - 4;
       };
@@ -127402,14 +127983,11 @@ qx.Bootstrap.define("qx.ui.website.Rating", {
       };
       this._updateSymbolLength();
       var cssPrefix = this.getCssPrefix();
-      this._forEachElementWrapped(function(rating){
+      if(this.getAttribute("tabindex") < 0){
 
-        if(rating.getAttribute("tabindex") < 0){
-
-          rating.setAttribute("tabindex", 0);
-        };
-        rating.$onFirstCollection("focus", this._onFocus, rating).$onFirstCollection("blur", this._onBlur, rating).getChildren("span").addClasses([cssPrefix + "-item", cssPrefix + "-item-off"]).$onFirstCollection("tap", this._onTap, rating);
-      }.bind(this));
+        this.setAttribute("tabindex", 0);
+      };
+      this.on("focus", this._onFocus, this).on("blur", this._onBlur, this).getChildren("span").addClasses([cssPrefix + "-item", cssPrefix + "-item-off"]).on("tap", this._onTap, this);
       return true;
     },
     setValue : function(value){
@@ -127423,19 +128001,16 @@ qx.Bootstrap.define("qx.ui.website.Rating", {
         value = 0;
       };
       var cssPrefix = this.getCssPrefix();
-      this._forEachElementWrapped(function(rating){
-
-        var children = rating.getChildren("span");
-        children.removeClass(cssPrefix + "-item-off");
-        children.slice(value, children.length).addClass(cssPrefix + "-item-off");
-        rating.emit("changeValue", rating.getValue());
-      });
+      var children = this.getChildren("span");
+      children.removeClass(cssPrefix + "-item-off");
+      children.slice(value, children.length).addClass(cssPrefix + "-item-off");
+      this.emit("changeValue", this.getValue());
       return this;
     },
     getValue : function(){
 
       var cssPrefix = this.getCssPrefix();
-      return this.eq(0).getChildren("span").not("." + cssPrefix + "-item-off").length;
+      return this.getChildren("span").not("." + cssPrefix + "-item-off").length;
     },
     render : function(){
 
@@ -127445,25 +128020,22 @@ qx.Bootstrap.define("qx.ui.website.Rating", {
 
       var cssPrefix = this.getCssPrefix();
       var length = this.getConfig("length");
-      this._forEachElementWrapped(function(el){
+      var children = this.getChildren();
+      children.setHtml(this.getConfig("symbol"));
+      var diff = length - children.length;
+      if(diff > 0){
 
-        var children = el.getChildren();
-        children.setHtml(this.getConfig("symbol"));
-        var diff = length - children.length;
-        if(diff > 0){
+        for(var i = 0;i < diff;i++){
 
-          for(var i = 0;i < diff;i++){
-
-            qxWeb.create("<span>" + this.getConfig("symbol") + "</span>").$onFirstCollection("tap", el._onTap, el).addClasses([cssPrefix + "-item", cssPrefix + "-item-off"]).appendTo(el);
-          };
-        } else {
-
-          for(var i = 0;i < Math.abs(diff);i++){
-
-            el.getChildren().getLast().$offFirstCollection("tap", el._onTap, el).remove();
-          };
+          qxWeb.create("<span>" + this.getConfig("symbol") + "</span>").on("tap", this._onTap, this).addClasses([cssPrefix + "-item", cssPrefix + "-item-off"]).appendTo(this);
         };
-      }.bind(this));
+      } else {
+
+        for(var i = 0;i < Math.abs(diff);i++){
+
+          this.getChildren().getLast().off("tap", this._onTap, this).remove();
+        };
+      };
       return this;
     },
     _onTap : function(e){
@@ -127492,12 +128064,9 @@ qx.Bootstrap.define("qx.ui.website.Rating", {
     },
     dispose : function(){
 
-      this._forEachElementWrapped(function(rating){
-
-        qxWeb(document.documentElement).off("keydown", this._onKeyDown, rating);
-        rating.$offFirstCollection("focus", this._onFocus, rating).$offFirstCollection("blur", this._onBlur, rating);
-        rating.getChildren("span").$offFirstCollection("tap", rating._onTap, rating);
-      });
+      qxWeb(document.documentElement).off("keydown", this._onKeyDown, this);
+      this.off("focus", this._onFocus, this).off("blur", this._onBlur, this);
+      this.getChildren("span").off("tap", this._onTap, this);
       this.setHtml("");
       return this.base(arguments);
     }
@@ -127507,57 +128076,6 @@ qx.Bootstrap.define("qx.ui.website.Rating", {
     qxWeb.$attach({
       rating : statics.rating
     });
-  }
-});
-
-qx.Bootstrap.define("qx.module.event.Swipe", {
-  statics : {
-    TYPES : ["swipe"],
-    BIND_METHODS : ["getStartTime", "getDuration", "getAxis", "getDirection", "getVelocity", "getDistance"],
-    getStartTime : function(){
-
-      return this._original.swipe.startTime;
-    },
-    getDuration : function(){
-
-      return this._original.swipe.duration;
-    },
-    getAxis : function(){
-
-      return this._original.swipe.axis;
-    },
-    getDirection : function(){
-
-      return this._original.swipe.direction;
-    },
-    getVelocity : function(){
-
-      return this._original.swipe.velocity;
-    },
-    getDistance : function(){
-
-      return this._original.swipe.distance;
-    },
-    normalize : function(event, element){
-
-      if(!event){
-
-        return event;
-      };
-      var bindMethods = qx.module.event.Swipe.BIND_METHODS;
-      for(var i = 0,l = bindMethods.length;i < l;i++){
-
-        if(typeof event[bindMethods[i]] != "function"){
-
-          event[bindMethods[i]] = qx.module.event.Swipe[bindMethods[i]].bind(event);
-        };
-      };
-      return event;
-    }
-  },
-  defer : function(statics){
-
-    qxWeb.$registerEventNormalization(qx.module.event.Swipe.TYPES, statics.normalize);
   }
 });
 
@@ -127595,33 +128113,6 @@ qx.Class.define("qx.log.appender.PhoneGap", {
 
       register();
     };
-  }
-});
-
-qx.Class.define("qx.ui.mobile.embed.Html", {
-  extend : qx.ui.mobile.core.Widget,
-  construct : function(html){
-
-    this.base(arguments);
-    if(html){
-
-      this.setHtml(html);
-    };
-  },
-  properties : {
-    html : {
-      check : "String",
-      init : null,
-      nullable : true,
-      event : "changeHtml",
-      apply : "_applyHtml"
-    }
-  },
-  members : {
-    _applyHtml : function(value, old){
-
-      this._setHtml(value);
-    }
   }
 });
 
@@ -127842,12 +128333,7 @@ qx.Bootstrap.define("qx.module.util.Function", {
   },
   defer : function(statics){
 
-    qxWeb.$attachStatic({
-      func : {
-        debounce : statics.debounce,
-        throttle : statics.throttle
-      }
-    });
+    qxWeb.$attachAll(this, "func");
   }
 });
 
@@ -128170,11 +128656,7 @@ qx.Bootstrap.define("qx.module.Rest", {
   },
   defer : function(statics){
 
-    qxWeb.$attachStatic({
-      "rest" : {
-        "resource" : statics.resource
-      }
-    });
+    qxWeb.$attachAll(this, "rest");
   }
 });
 

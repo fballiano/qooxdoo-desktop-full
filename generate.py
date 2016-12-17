@@ -25,7 +25,7 @@
 import sys, os, re, subprocess
 
 CMD_PYTHON = sys.executable
-QOOXDOO_PATH = '../qooxdoo-3.5-sdk'
+QOOXDOO_PATH = 'qooxdoo-5.0.1-sdk'
 
 def getQxPath():
     path = QOOXDOO_PATH
@@ -66,7 +66,7 @@ if sys.platform == "win32":
     argList = argList1
 else:
     argList = ['"%s"' % x for x in argList]  # quote argv elements
-    
+
 cmd = " ".join(argList)
 retval = subprocess.call(cmd, shell=True)
 sys.exit(retval)
